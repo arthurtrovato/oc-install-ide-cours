@@ -22,6 +22,7 @@ extension CLAuthorizationStatus {
 final class AppleLocationClient: NSObject, CLLocationManagerDelegate {
     private let manager: CLLocationManager
     private var continuation: CheckedContinuation<CLLocation?, Never>?
+    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
     private var timeoutTask: Task<Void, Never>?
 
     override init() {
@@ -35,8 +36,17 @@ final class AppleLocationClient: NSObject, CLLocationManagerDelegate {
     var authorizationStatus: CLAuthorizationStatus { manager.authorizationStatus }
     var isAuthorizedForWidgetUpdates: Bool { manager.isAuthorizedForWidgetUpdates }
 
-    func requestWhenInUseAuthorization() {
-        manager.requestWhenInUseAuthorization()
+    func requestWhenInUseAuthorization() async -> CLAuthorizationStatus {
+        let current = manager.authorizationStatus
+        guard current == .notDetermined else { return current }
+        return await withCheckedContinuation { continuation in
+            authorizationContinuation = continuation
+            manager.requestWhenInUseAuthorization()
+            let updated = manager.authorizationStatus
+            if updated != .notDetermined {
+                finishAuthorization(with: updated)
+            }
+        }
     }
 
     func requestCurrentLocation(promptIfNeeded: Bool) async -> CLLocation? {
@@ -59,6 +69,12 @@ final class AppleLocationClient: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        guard status != .notDetermined else { return }
+        finishAuthorization(with: status)
+    }
+
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let best = locations
             .filter { $0.horizontalAccuracy >= 0 }
@@ -69,6 +85,12 @@ final class AppleLocationClient: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         finish(with: nil)
+    }
+
+    private func finishAuthorization(with status: CLAuthorizationStatus) {
+        let pending = authorizationContinuation
+        authorizationContinuation = nil
+        pending?.resume(returning: status)
     }
 
     private func finish(with location: CLLocation?) {

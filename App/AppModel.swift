@@ -38,9 +38,17 @@ final class AppModel: ObservableObject {
     }
 
     func requestLocationPermission() {
-        locationClient.requestWhenInUseAuthorization()
-        statusMessage = "Autorisez la localisation « lors de l’utilisation de l’app ou des widgets », puis actualisez."
-        updateAuthorizationDiagnostics()
+        statusMessage = "Autorisez la localisation « lors de l’utilisation de l’app ou des widgets »."
+        Task { [weak self] in
+            guard let self else { return }
+            let status = await self.locationClient.requestWhenInUseAuthorization()
+            self.updateAuthorizationDiagnostics()
+            if status.allowsForegroundLocation {
+                await self.refresh(promptForPermission: false, force: false)
+            } else {
+                self.statusMessage = "La localisation reste désactivée. Vous pouvez la modifier dans Réglages."
+            }
+        }
     }
 
     func refresh(promptForPermission: Bool = false, force: Bool = true) async {
@@ -114,6 +122,11 @@ final class AppModel: ObservableObject {
     }
 
     func handleRelayURL(_ url: URL) {
+        if url.scheme?.lowercased() == MeteoblueForecastLinkBuilder.relayScheme,
+           url.host?.lowercased() == "open-app" {
+            diagnostics.deepLinkState = "App ouverte depuis le widget"
+            return
+        }
         guard let target = MeteoblueForecastLinkBuilder.validatedTarget(from: url) else {
             diagnostics.deepLinkState = "Lien refusé (cible non autorisée)"
             return
