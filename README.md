@@ -4,6 +4,14 @@ A native SwiftUI iPhone application with a large WidgetKit Home Screen widget. T
 
 The widget presents current conditions, roughly six hourly forecasts, and five daily forecasts at the same time. It is functionally inspired by dense first-party weather widgets, but the layout, range bars and code are original. It uses SF Symbols rather than copying meteoblue or Apple Weather artwork.
 
+## Recommended free installation: SideStore
+
+For a zero-cost setup without owning a Mac, the recommended path is now **GitHub Actions -> SideStore -> iPhone**. GitHub's macOS runner compiles an unsigned device IPA, SideStore re-signs it with the user's free Apple Account, and SideStore can refresh the normal seven-day development signature directly from the iPhone.
+
+The only computer-dependent step is SideStore's initial device installation/pairing; Windows, macOS or Linux can be used. After that, normal installation and refreshes happen on the iPhone with LocalDevVPN enabled. The exact procedure is in [`SIDESTORE.md`](SIDESTORE.md).
+
+The `iOS CI` workflow creates the `MeteoblueWeather-SideStore` artifact only on a **manual workflow run** on `meteoblue-widget`. It contains the app plus the WidgetKit extension and is intentionally unsigned so SideStore can apply the user's personal development certificate. The artifact expires after one day.
+
 ## Current API design
 
 The network layer uses the meteoblue Forecast/Packages API at `my.meteoblue.com` and combines these two Free Weather API packages in one JSON request:
@@ -26,9 +34,10 @@ Widget/                      WidgetKit provider, large widget UI, previews
 Sources/MeteoblueCore/       Platform-light domain/network/cache/timeline/link logic
 Tests/MeteoblueCoreTests/    Fast unit tests + one opt-in live API integration test
 Config/                      xcconfig template (real secret ignored)
-.github/workflows/           macOS GitHub Actions build/test pipeline
+.github/workflows/           macOS GitHub Actions build/test/package pipeline
 project.yml                  Reproducible XcodeGen project definition
 Package.swift                Swift package for MeteoblueCore and tests
+SIDESTORE.md                 Zero-cost no-Mac installation guide
 ```
 
 Key separations:
@@ -161,7 +170,9 @@ The host app exposes a Diagnostics screen with:
 
 meteoblue documents API-key signing for frontend/mobile scenarios and recommends protecting credentials. Their signing flow requires a shared signing secret associated with the key. This repository has only the existing API key, not such a shared secret, so no fake HMAC scheme is implemented.
 
-For this personal app, direct API access is therefore used. **An API key embedded in a native client can ultimately be extracted.** The architecture isolates endpoint creation so a future HTTPS proxy or meteoblue signed-URL service can replace direct access without changing the cache, timeline or UI layers.
+For normal local/Xcode builds, the ignored `Config/Secrets.xcconfig` path remains available. For a manually requested SideStore package, GitHub Actions reads the existing `METEOBLUE_API_KEY` repository secret and overwrites `AppleSupport/EmbeddedMeteoblueSecret.swift` **only inside the ephemeral runner**. The generated source stores the key as two random XOR byte arrays rather than as a plaintext Info.plist value. CI verifies that the plaintext key is absent from the packaged app before it creates the unsigned IPA. The checked-in source contains empty arrays.
+
+This is obfuscation, not secret storage. **An API key shipped in a native client can ultimately be extracted.** Because this repository is public, a SideStore artifact must also be treated as potentially accessible to other readers while it exists. For that reason keyed IPA packaging is manual-only and the artifact expires after one day. A backend proxy or meteoblue signing secret is the correct architecture if cryptographic credential protection becomes necessary.
 
 A Vercel proxy was intentionally not made mandatory: deploying a useful secret-hiding proxy requires securely provisioning the meteoblue credential into that deployment. Copying a GitHub Actions secret into another provider without an authorized secret-transfer mechanism would either require user intervention or risk exposure, which is worse than the simple personal-client design.
 
@@ -181,34 +192,11 @@ METEOBLUE_API_KEY = your_real_key_here
 
 `Config/Secrets.xcconfig` is ignored by Git. `Base.xcconfig` includes it optionally, so the project still builds without a local key and the app reports that configuration is missing.
 
-## Generate and open the Xcode project
+## Alternative: Xcode Personal Team
 
-Install XcodeGen, then from the repository root:
+A Mac remains an optional fallback, not the recommended free path. Install XcodeGen, run `xcodegen generate`, open the project, choose a free Personal Team for the app and widget extension, and run on the iPhone. Apple's free development profile still expires after seven days, so direct Xcode installation requires periodic re-sign/reinstall.
 
-```sh
-xcodegen generate
-open MeteoblueWeather.xcodeproj
-```
-
-The generated `.xcodeproj` is intentionally ignored; `project.yml` is the source of truth.
-
-## Signing and installation on an iPhone
-
-The project keeps automatic signing enabled and adds no App Group dependency.
-
-For a free Xcode **Personal Team**:
-
-1. Open the generated project in Xcode.
-2. Sign into your Apple Account in Xcode if needed.
-3. Select the `MeteoblueWeather` app target and your Personal Team under Signing & Capabilities. Do the same for `MeteoblueWidgetExtension` if Xcode does not inherit the choice automatically.
-4. Connect/select the iPhone, enable Developer Mode when iOS asks, and Run.
-5. Accept the system's trust/developer prompts if shown.
-6. In the app, tap the location authorization button and choose While Using the App.
-7. Add the large Meteoblue Weather widget to the Home Screen and approve extending location access to the widget when iOS asks.
-
-Apple currently documents Personal Team limits including development profiles that expire after seven days, up to 10 App IDs, up to 3 registered devices and up to 3 installed Personal Team apps per device. Rebuilding/reinstalling is therefore periodically required with a free account. This project does not require WeatherKit, Associated Domains, App Groups, push notifications or another advanced entitlement.
-
-A paid Apple Developer Program membership is not required for the core personal-device design. It would be required for App Store distribution and may be useful later for additional entitlement-backed services.
+The project deliberately has no App Group, WeatherKit, Associated Domains or push-notification dependency. A paid Apple Developer Program membership is not required for the core personal-device design.
 
 ## Tests
 
@@ -255,11 +243,13 @@ Do not place a real key in shell history on a shared machine. GitHub Actions obt
 5. regenerates the Xcode project;
 6. builds the host iOS app for a generic iOS Simulator with signing disabled;
 7. explicitly builds the WidgetKit extension;
-8. fails if `Config/Secrets.xcconfig` is tracked.
+8. verifies that no local secret file is tracked;
+9. on a manual `workflow_dispatch` from `meteoblue-widget`, generates the runner-only obfuscated key source;
+10. builds an unsigned Release app for a physical iPhone target, verifies the widget extension is embedded and the plaintext key is absent, packages `MeteoblueWeather-SideStore.ipa`, and uploads it for one day.
 
-CI intentionally validates compilation without needing a personal Apple ID or signing certificate.
+Pull-request contexts never receive the SideStore packaging secret. Normal push runs validate the project but do not publish a keyed IPA.
 
-## What iOS still controls
+## What iOS and SideStore still control
 
 No implementation can force these behaviors:
 
@@ -267,9 +257,10 @@ No implementation can force these behaviors:
 - an exact WidgetKit refresh time;
 - unlimited widget refreshes;
 - the user's location-permission choice;
-- whether the meteoblue Universal Link opens the app or web when the official app is absent or iOS/user link preferences choose the browser.
+- whether the meteoblue Universal Link opens the app or web when the official app is absent or iOS/user link preferences choose the browser;
+- SideStore's own signing/extension compatibility on every future iOS release.
 
-The project handles those constraints through cached positions, multi-zone weather cache, future timeline entries, stale indicators and a web-safe Universal Link fallback.
+SideStore currently documents that apps should normally not need modification. The project also deliberately avoids App Groups; this matters because a current SideStore issue concerns App Group entitlements for extensions/widgets. Physical-device installation remains the final validation of the free signing path.
 
 ## Authoritative references checked during implementation
 
@@ -281,3 +272,4 @@ The project handles those constraints through cached positions, multi-zone weath
 - Apple: Personal Team account limits: https://developer.apple.com/help/account/basics/about-your-developer-account
 - Apple: iOS capability availability by membership: https://developer.apple.com/help/account/reference/supported-capabilities-ios
 - meteoblue Universal Links association: https://www.meteoblue.com/.well-known/apple-app-site-association
+- SideStore prerequisites/install/FAQ: https://docs.sidestore.io/docs/installation/prerequisites
