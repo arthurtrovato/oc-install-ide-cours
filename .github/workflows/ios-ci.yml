@@ -155,6 +155,19 @@ jobs:
           test -d "$APP/PlugIns/MeteoblueWidgetExtension.appex"
           test ! -f "$APP/embedded.mobileprovision"
 
+          python3 - "$APP/Info.plist" "$APP/PlugIns/MeteoblueWidgetExtension.appex/Info.plist" <<'PY'
+          import plistlib
+          import sys
+
+          expected = ("1.0.1", "2")
+          for filename in sys.argv[1:]:
+              with open(filename, "rb") as stream:
+                  info = plistlib.load(stream)
+              actual = (info.get("CFBundleShortVersionString"), info.get("CFBundleVersion"))
+              if actual != expected:
+                  raise SystemExit(f"Unexpected bundle version in {filename}: {actual}; expected {expected}")
+          PY
+
           # The key must not survive as a plaintext string anywhere in the packaged app.
           python3 - "$APP" <<'PY'
           import os

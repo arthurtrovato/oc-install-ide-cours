@@ -29,8 +29,6 @@ targets:
     sources:
       - path: App
       - path: AppleSupport
-    info:
-      path: App/Info.plist
     dependencies:
       - package: MeteoblueCore
         product: MeteoblueCore
@@ -40,6 +38,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arthurtrovato.MeteoblueWidget
         PRODUCT_NAME: MeteoblueWeather
+        INFOPLIST_FILE: App/Info.plist
         TARGETED_DEVICE_FAMILY: 1
         GENERATE_INFOPLIST_FILE: NO
         SUPPORTS_MACCATALYST: NO
@@ -49,8 +48,6 @@ targets:
     sources:
       - path: Widget
       - path: AppleSupport
-    info:
-      path: Widget/Info.plist
     dependencies:
       - package: MeteoblueCore
         product: MeteoblueCore
@@ -58,6 +55,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arthurtrovato.MeteoblueWidget.Widget
         PRODUCT_NAME: MeteoblueWidgetExtension
+        INFOPLIST_FILE: Widget/Info.plist
         TARGETED_DEVICE_FAMILY: 1
         GENERATE_INFOPLIST_FILE: NO
         APPLICATION_EXTENSION_API_ONLY: YES
