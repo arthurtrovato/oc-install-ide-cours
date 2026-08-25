@@ -11,6 +11,13 @@ struct AppleConfiguration: Sendable {
     }
 
     static func fromMainBundle() -> AppleConfiguration {
+        // SideStore CI builds carry a lightly-obfuscated key generated inside the runner.
+        // Normal local/Xcode builds keep using the ignored Secrets.xcconfig path.
+        if let embedded = EmbeddedMeteoblueSecret.apiKey,
+           !embedded.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return AppleConfiguration(meteoblueAPIKey: embedded)
+        }
+
         let raw = Bundle.main.object(forInfoDictionaryKey: "MeteoblueAPIKey") as? String
         return AppleConfiguration(meteoblueAPIKey: raw)
     }
