@@ -40,7 +40,7 @@ struct ContentView: View {
                 Text(model.statusMessage)
                     .font(.callout)
                 Button {
-                    Task { await model.refresh(force: true) }
+                    Task { await model.refresh(force: false) }
                 } label: {
                     Label(model.isLoading ? "Actualisation..." : "Actualiser", systemImage: "arrow.clockwise")
                 }
@@ -80,7 +80,7 @@ private struct CurrentSummaryView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Text("\(Int(model.current.temperatureCelsius.rounded())) deg")
+            Text("\(Int(model.current.temperatureCelsius.rounded()))°")
                 .font(.system(size: 34, weight: .light, design: .rounded))
                 .monospacedDigit()
         }

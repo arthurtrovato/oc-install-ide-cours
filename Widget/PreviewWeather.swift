@@ -4,7 +4,7 @@ import WidgetKit
 
 #if DEBUG
 enum PreviewWeather {
-    enum Kind { case rain, sun, snow, storm }
+    enum Kind { case rain, sun, snow, storm, fog, night }
 
     static func entry(kind: Kind) -> MeteoblueWidgetEntry {
         let snapshot = snapshot(kind: kind)
@@ -22,6 +22,8 @@ enum PreviewWeather {
         case .sun: condition = .clear; temp = 31; locality = "Saint-Remy-en-Bouzemont-Saint-Genest-et-Isson"
         case .snow: condition = .snow; temp = -8; locality = "Chamonix-Mont-Blanc"
         case .storm: condition = .thunderstorm; temp = 24; locality = "Montpellier"
+        case .fog: condition = .fog; temp = 5; locality = "Metz"
+        case .night: condition = .clear; temp = 6; locality = "Tressange"
         }
         let location = WeatherLocation(coordinate: .init(latitude: 49.402, longitude: 5.982), locality: locality, countryCode: "FR", timeZoneIdentifier: "Europe/Paris", elevationMeters: 320)
         var calendar = Calendar(identifier: .gregorian)
@@ -33,7 +35,7 @@ enum PreviewWeather {
                 date: date,
                 temperatureCelsius: temp + Double(index) * 0.7,
                 condition: index < 4 ? condition : .partlyCloudy,
-                isDaylight: (7..<20).contains(calendar.component(.hour, from: date)),
+                isDaylight: kind == .night ? false : (7..<20).contains(calendar.component(.hour, from: date)),
                 precipitationProbabilityPercent: condition == .clear ? 0 : Double(max(10, 80 - index * 8)),
                 precipitationMillimeters: condition == .rain ? 0.7 : 0,
                 sourcePictocode: nil
@@ -53,7 +55,7 @@ enum PreviewWeather {
         return WeatherSnapshot(
             fetchedAt: now,
             location: location,
-            current: CurrentConditions(date: now, temperatureCelsius: temp, condition: condition, isDaylight: true, precipitationProbabilityPercent: condition == .clear ? 0 : 75),
+            current: CurrentConditions(date: now, temperatureCelsius: temp, condition: condition, isDaylight: kind != .night, precipitationProbabilityPercent: condition == .clear ? 0 : 75),
             hourly: hourly,
             daily: daily,
             meteoblueURL: try! MeteoblueForecastLinkBuilder.webURL(for: location)
@@ -78,6 +80,13 @@ struct MeteoblueWidgetPreviews: PreviewProvider {
                 .previewContext(WidgetPreviewContext(family: .systemLarge))
                 .preferredColorScheme(.dark)
                 .previewDisplayName("Storm")
+            MeteoblueWidgetView(entry: PreviewWeather.entry(kind: .fog))
+                .previewContext(WidgetPreviewContext(family: .systemLarge))
+                .previewDisplayName("Fog")
+            MeteoblueWidgetView(entry: PreviewWeather.entry(kind: .night))
+                .previewContext(WidgetPreviewContext(family: .systemLarge))
+                .preferredColorScheme(.dark)
+                .previewDisplayName("Clear night")
         }
     }
 }

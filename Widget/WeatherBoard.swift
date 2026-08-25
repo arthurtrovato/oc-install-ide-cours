@@ -113,7 +113,7 @@ struct WeatherBoard: View {
 
     private func temperature(_ value: Double?) -> String {
         guard let value else { return "--" }
-        return "\(Int(value.rounded())) deg"
+        return "\(Int(value.rounded()))°"
     }
 }
 
@@ -134,12 +134,12 @@ private struct DailyForecastRow: View {
             Text(temp(day.minimumCelsius))
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 30, alignment: .trailing)
+                .frame(width: 34, alignment: .trailing)
             TemperatureRangeBar(day: day, allDays: allDays)
                 .frame(height: 7)
             Text(temp(day.maximumCelsius))
                 .font(.caption.weight(.semibold).monospacedDigit())
-                .frame(width: 30, alignment: .trailing)
+                .frame(width: 34, alignment: .trailing)
         }
         .frame(height: 22)
     }
@@ -151,7 +151,7 @@ private struct DailyForecastRow: View {
         return formatter.string(from: date).capitalized
     }
 
-    private func temp(_ value: Double) -> String { "\(Int(value.rounded())) deg" }
+    private func temp(_ value: Double) -> String { "\(Int(value.rounded()))°" }
 }
 
 private struct TemperatureRangeBar: View {

@@ -6,15 +6,14 @@ The widget presents current conditions, roughly six hourly forecasts, and five d
 
 ## Current API design
 
-The network layer uses the meteoblue Forecast/Packages API at `my.meteoblue.com` and combines these Free Weather API packages in one JSON request:
+The network layer uses the meteoblue Forecast/Packages API at `my.meteoblue.com` and combines these two Free Weather API packages in one JSON request:
 
 - `basic-1h` for hourly temperature, detailed pictocode and precipitation fields;
-- `basic-day` for daily min/max, daily pictocode and probability fields;
-- `current` for present conditions when the package returns them.
+- `basic-day` for daily min/max, daily pictocode and probability fields.
 
-meteoblue currently documents that a Forecast API request can combine multiple packages and that Basic and Current are available to the Free Weather API. JSON is used because packages with different time resolutions can be returned together. Forecast length is limited to seven days by the service.
+The production request path is therefore `basic-1h_basic-day`. This exact combination was exercised successfully against the real Free Weather API key in GitHub Actions. An earlier live probe that also appended `current` returned HTTP 403 for this account, so `current` is deliberately not a production dependency. This also minimizes package accounting and keeps the app portable across Free Weather API keys.
 
-If the `current` block is absent or partly missing, `MeteoblueTransformer` derives present conditions from the closest valid hourly row instead of making the UI fail. Decoding also tolerates numeric strings, nulls, partial arrays and selected field aliases.
+meteoblue documents that one Forecast API call can combine multiple packages. JSON is used because the hourly and daily packages have different time resolutions. Forecast length is limited to seven days by the service. Present conditions are derived entirely from meteoblue by selecting the closest valid `basic-1h` row to the display time. The decoder still accepts an optional `data_current` block in fixtures or future compatible responses, but the app does not require it. Decoding also tolerates numeric strings, nulls, partial arrays and selected field aliases.
 
 Weather source rule: temperature, precipitation, forecast and weather condition values come only from meteoblue. Core Location / CLGeocoder may provide coordinates, locality text and time zone; those are location metadata, not weather data. WeatherKit is not used.
 
@@ -110,7 +109,7 @@ The supported family is `.systemLarge`. It shows, at once:
 - five daily rows with weekday, symbol, minimum, maximum and a compact relative temperature-range bar;
 - a subtle stale/fallback indicator.
 
-Semantic SwiftUI foreground/background styles and SF Symbols are used for light/dark mode and modern widget rendering modes. Previews include rain, clear/hot with an unusually long locality, snow with negative temperature, storm and dark-mode cases.
+Semantic SwiftUI foreground/background styles and SF Symbols are used for light/dark mode and modern widget rendering modes. Previews include rain, clear/hot with an unusually long locality, snow with negative temperature, storm, fog, an explicit clear-night case and dark-mode cases.
 
 ## meteoblue pictocode mapping
 
@@ -237,7 +236,7 @@ The suite covers at least:
 
 ### Real integration test
 
-The live test is opt-in locally:
+The live test is opt-in locally. In CI it has been run successfully against the `basic-1h_basic-day` response and verifies that the current response can be transformed into non-empty hourly and daily forecasts:
 
 ```sh
 RUN_METEOBLUE_LIVE_TEST=1 METEOBLUE_API_KEY='...' swift test --filter MeteoblueLiveIntegrationTests

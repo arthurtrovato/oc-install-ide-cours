@@ -41,6 +41,9 @@ final class MeteoblueLiveIntegrationTests: XCTestCase {
         XCTAssertFalse(snapshot.hourly.isEmpty)
         XCTAssertGreaterThanOrEqual(snapshot.daily.count, 5)
         XCTAssertTrue(snapshot.current.temperatureCelsius.isFinite)
+        XCTAssertNotEqual(snapshot.hourly.first?.condition, .unknown)
+        XCTAssertTrue(snapshot.hourly.contains { $0.precipitationProbabilityPercent != nil })
+        XCTAssertTrue(snapshot.daily.contains { $0.precipitationProbabilityPercent != nil })
         XCTAssertEqual(snapshot.meteoblueURL.host, "www.meteoblue.com")
     }
 }

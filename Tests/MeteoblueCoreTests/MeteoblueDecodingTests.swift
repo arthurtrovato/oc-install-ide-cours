@@ -78,6 +78,19 @@ final class MeteoblueDecodingTests: XCTestCase {
         XCTAssertEqual(snapshot.hourly[0].date, fetchedAt)
     }
 
+    func testHourlyPictocodeAliasUsesHourlyPictogramSet() throws {
+        let data = Data("{\"data_1h\":{\"time\":[\"2026-08-25 10:00\"],\"temperature\":[14],\"pictocode\":[23],\"isdaylight\":[true]},\"data_day\":{\"time\":[\"2026-08-25\"],\"temperature_min\":[10],\"temperature_max\":[18],\"pictocode\":[6]}}".utf8)
+        let payload = try MeteobluePayloadDecoder.decode(data)
+        let snapshot = try MeteoblueTransformer.makeSnapshot(
+            payload: payload,
+            requestedLocation: location,
+            fetchedAt: fetchedAt,
+            meteoblueURL: try MeteoblueForecastLinkBuilder.webURL(for: location)
+        )
+        XCTAssertEqual(snapshot.hourly.first?.condition, .rain)
+        XCTAssertEqual(snapshot.daily.first?.condition, .rain)
+    }
+
     private func makeSnapshot(_ fixture: String) throws -> WeatherSnapshot {
         let payload = try MeteobluePayloadDecoder.decode(fixtureData(fixture))
         return try MeteoblueTransformer.makeSnapshot(
