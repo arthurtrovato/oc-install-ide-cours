@@ -1,6 +1,6 @@
 name: iOS CI
 
-# Keep every branch push self-validating on a GitHub-hosted macOS/Xcode runner.
+# Normal pushes validate the project. A manual run also produces a short-lived SideStore IPA.
 on:
   push:
     branches: [meteoblue-widget]
@@ -91,3 +91,102 @@ jobs:
             echo "Config/Secrets.xcconfig must never be committed."
             exit 1
           fi
+
+      - name: Generate SideStore embedded credential
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
+        env:
+          METEOBLUE_API_KEY: ${{ secrets.METEOBLUE_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${METEOBLUE_API_KEY:-}" ]; then
+            echo "::error::METEOBLUE_API_KEY is required to package the SideStore IPA."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import secrets
+
+          key = os.environ["METEOBLUE_API_KEY"].encode("utf-8")
+          mask = secrets.token_bytes(len(key))
+          encoded = bytes(a ^ b for a, b in zip(key, mask))
+
+          def swift_array(data: bytes) -> str:
+              return ", ".join(str(value) for value in data)
+
+          source = f'''import Foundation
+
+          // Generated inside GitHub Actions. The repository version contains empty arrays.
+          enum EmbeddedMeteoblueSecret {{
+              private static let encoded: [UInt8] = [{swift_array(encoded)}]
+              private static let mask: [UInt8] = [{swift_array(mask)}]
+
+              static var apiKey: String? {{
+                  guard !encoded.isEmpty, encoded.count == mask.count else {{ return nil }}
+                  let bytes = zip(encoded, mask).map {{ pair in pair.0 ^ pair.1 }}
+                  return String(bytes: bytes, encoding: .utf8)
+              }}
+          }}
+          '''
+          pathlib.Path("AppleSupport/EmbeddedMeteoblueSecret.swift").write_text(source, encoding="utf-8")
+          PY
+          echo "Generated the runner-only credential source without printing the key."
+
+      - name: Build unsigned SideStore IPA
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
+        env:
+          METEOBLUE_API_KEY: ${{ secrets.METEOBLUE_API_KEY }}
+        run: |
+          set -euo pipefail
+          DERIVED="$RUNNER_TEMP/MeteoblueSideStoreDerivedData"
+          xcodebuild \
+            -project MeteoblueWeather.xcodeproj \
+            -scheme MeteoblueWeather \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$DERIVED" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            clean build
+
+          APP="$DERIVED/Build/Products/Release-iphoneos/MeteoblueWeather.app"
+          test -d "$APP"
+          test -d "$APP/PlugIns/MeteoblueWidgetExtension.appex"
+          test ! -f "$APP/embedded.mobileprovision"
+
+          # The key must not survive as a plaintext string in either Mach-O binary.
+          python3 - "$APP" <<'PY'
+          import os
+          import pathlib
+          import sys
+
+          root = pathlib.Path(sys.argv[1])
+          key = os.environ["METEOBLUE_API_KEY"].encode("utf-8")
+          for path in root.rglob("*"):
+              if path.is_file():
+                  try:
+                      data = path.read_bytes()
+                  except OSError:
+                      continue
+                  if key and key in data:
+                      raise SystemExit(f"Plaintext credential found in packaged file: {path.name}")
+          PY
+
+          PACKAGE="$RUNNER_TEMP/MeteoblueSideStorePackage"
+          mkdir -p "$PACKAGE/Payload"
+          cp -R "$APP" "$PACKAGE/Payload/"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent \
+            "$PACKAGE/Payload" \
+            "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore.ipa"
+          /usr/bin/unzip -t "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore.ipa" >/dev/null
+          echo "Unsigned IPA packaged for SideStore re-signing."
+
+      - name: Upload SideStore IPA
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeteoblueWeather-SideStore
+          path: MeteoblueWeather-SideStore.ipa
+          if-no-files-found: error
+          retention-days: 1
