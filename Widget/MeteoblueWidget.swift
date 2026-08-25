@@ -57,7 +57,7 @@ struct MeteoblueWidgetView: View {
         Group {
             if let model = entry.model {
                 WeatherBoard(model: model)
-                    .widgetURL(try? MeteoblueForecastLinkBuilder.relayURL(for: model.snapshot.meteoblueURL))
+                    .widgetURL(URL(string: "meteoblueweather://open-app"))
             } else {
                 EmptyWeatherBoard(message: entry.message ?? "Donnees indisponibles")
                     .widgetURL(URL(string: "meteoblueweather://open-app"))
