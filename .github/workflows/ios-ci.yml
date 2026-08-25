@@ -1,5 +1,6 @@
 name: iOS CI
 
+# Keep every branch push self-validating on a GitHub-hosted macOS/Xcode runner.
 on:
   push:
     branches: [meteoblue-widget]
