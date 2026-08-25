@@ -1,0 +1,2 @@
+METEOBLUE_API_KEY =
+#include? "Secrets.xcconfig"
