@@ -1,0 +1,17 @@
+{
+  "metadata": {"lat": "49.402", "lon": "5.982", "height": "320", "timezone": "Europe/Paris"},
+  "data_1h": {
+    "time": ["2026-08-25 10:00", "2026-08-25 11:00", "2026-08-25 12:00"],
+    "temperature": ["14.5", null, "16.5"],
+    "pictocode_detailed": ["7", null, "23"],
+    "isdaylight": ["true", null, 1],
+    "precipitation_probability": ["20", null, "150"]
+  },
+  "data_day": {
+    "time": ["2026-08-25", "2026-08-26"],
+    "temperature_min": ["11", null],
+    "temperature_max": ["18", "25"],
+    "pictocode": ["3", null],
+    "precipitation_probability": ["10", null]
+  }
+}
