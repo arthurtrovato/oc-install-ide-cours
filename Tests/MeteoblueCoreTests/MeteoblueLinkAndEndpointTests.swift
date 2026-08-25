@@ -28,9 +28,9 @@ final class MeteoblueLinkAndEndpointTests: XCTestCase {
         XCTAssertNil(MeteoblueForecastLinkBuilder.validatedTarget(from: evil))
     }
 
-    func testEndpointCombinesBasicHourlyDailyAndCurrentPackages() throws {
+    func testEndpointCombinesBasicHourlyAndDailyPackages() throws {
         let url = try DirectMeteoblueEndpoint().requestURL(for: location, apiKey: "TEST_KEY")
-        XCTAssertEqual(url.path, "/packages/basic-1h_basic-day_current")
+        XCTAssertEqual(url.path, "/packages/basic-1h_basic-day")
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         XCTAssertEqual(items.first(where: { $0.name == "forecast_days" })?.value, "7")
         XCTAssertEqual(items.first(where: { $0.name == "tz" })?.value, "Europe/Paris")

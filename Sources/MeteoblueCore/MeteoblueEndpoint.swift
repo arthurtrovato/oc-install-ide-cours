@@ -11,7 +11,7 @@ public struct DirectMeteoblueEndpoint: MeteoblueEndpointBuilding, Sendable {
 
     public init(
         host: String = "my.meteoblue.com",
-        packages: [String] = ["basic-1h", "basic-day", "current"],
+        packages: [String] = ["basic-1h", "basic-day"],
         forecastDays: Int = 7
     ) {
         self.host = host
