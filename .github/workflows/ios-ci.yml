@@ -1,0 +1,92 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [meteoblue-widget]
+  pull_request:
+    branches: [meteoblue-widget]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          if [ -d /Applications/Xcode_16.4.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          fi
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Swift package tests
+        run: |
+          set -euo pipefail
+          swift test
+
+      - name: Live meteoblue integration test
+        env:
+          METEOBLUE_API_KEY: ${{ secrets.METEOBLUE_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${METEOBLUE_API_KEY:-}" ]; then
+            echo "METEOBLUE_API_KEY is unavailable in this workflow context; live test skipped."
+            exit 0
+          fi
+          RUN_METEOBLUE_LIVE_TEST=1 swift test --filter MeteoblueLiveIntegrationTests
+
+      - name: Generate Xcode project
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          test -d MeteoblueWeather.xcodeproj
+
+      - name: Build app and embedded widget
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project MeteoblueWeather.xcodeproj \
+            -scheme MeteoblueWeather \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build
+
+      - name: Build widget extension explicitly
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project MeteoblueWeather.xcodeproj \
+            -target MeteoblueWidgetExtension \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Verify no local secret file is tracked
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch Config/Secrets.xcconfig >/dev/null 2>&1; then
+            echo "Config/Secrets.xcconfig must never be committed."
+            exit 1
+          fi
