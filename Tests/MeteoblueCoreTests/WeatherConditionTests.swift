@@ -14,7 +14,7 @@ final class WeatherConditionTests: XCTestCase {
         let expected: [WeatherCondition] = [
             .clear, .clear, .clear, .mostlyClear, .mostlyClear, .mostlyClear,
             .partlyCloudy, .partlyCloudy, .partlyCloudy,
-            .thunderstorm, .thunderstorm, .thunderstorm,
+            .partlyCloudy, .partlyCloudy, .partlyCloudy,
             .haze, .haze, .haze, .fog, .fog, .fog,
             .overcast, .overcast, .overcast, .overcast,
             .rain, .snow, .rain, .snow, .thunderstorm, .thunderstorm, .snow,

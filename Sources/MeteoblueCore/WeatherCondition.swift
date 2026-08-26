@@ -80,7 +80,10 @@ public enum MeteoblueConditionMapper {
             case 1, 2, 3: return .clear
             case 4, 5, 6: return .mostlyClear
             case 7, 8, 9: return .partlyCloudy
-            case 10, 11, 12: return .thunderstorm
+            // 10...12 mean variable conditions with a possible local
+            // thunderstorm, not a confirmed thunderstorm. Keep the
+            // compact widget aligned with meteoblue's non-convective icon.
+            case 10, 11, 12: return .partlyCloudy
             case 13, 14, 15: return .haze
             case 16, 17, 18: return .fog
             case 19, 20, 21, 22: return .overcast
