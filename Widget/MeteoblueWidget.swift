@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 import MeteoblueCore
@@ -54,13 +55,138 @@ struct MeteoblueWidgetView: View {
     let entry: MeteoblueWidgetEntry
 
     var body: some View {
+        MeteoblueWidgetContent(model: entry.model, message: entry.message)
+            .widgetURL(MeteoblueForecastLinkBuilder.officialAppShortcutURL)
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+}
+
+private struct MeteoblueWidgetContent: View {
+    let model: WeatherDisplayModel?
+    let message: String?
+
+    var body: some View {
         Group {
-            if let model = entry.model {
+            if let model {
                 WeatherBoard(model: model)
-                    .widgetURL(MeteoblueForecastLinkBuilder.officialAppShortcutURL)
             } else {
-                EmptyWeatherBoard(message: entry.message ?? "Donnees indisponibles")
-                    .widgetURL(MeteoblueForecastLinkBuilder.officialAppShortcutURL)
+                EmptyWeatherBoard(message: message ?? "Donnees indisponibles")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+@available(iOS 27.0, *)
+struct MeteoblueWidgetConfigurationIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource { "Action du widget Meteoblue" }
+    static var description = IntentDescription(
+        "Choisissez l’application à ouvrir quand vous touchez le widget."
+    )
+
+    @Parameter(title: "Action au toucher")
+    var shortcut: SystemShortcut?
+}
+
+@available(iOS 27.0, *)
+struct MeteoblueInteractiveWidgetEntry: TimelineEntry {
+    let date: Date
+    let model: WeatherDisplayModel?
+    let message: String?
+    let configuration: MeteoblueWidgetConfigurationIntent
+}
+
+@available(iOS 27.0, *)
+struct MeteoblueInteractiveWidgetProvider: AppIntentTimelineProvider {
+    typealias Entry = MeteoblueInteractiveWidgetEntry
+
+    func placeholder(in context: Context) -> Entry {
+        let preview = PreviewWeather.entry(kind: .rain)
+        return Entry(
+            date: preview.date,
+            model: preview.model,
+            message: preview.message,
+            configuration: MeteoblueWidgetConfigurationIntent()
+        )
+    }
+
+    func snapshot(for configuration: MeteoblueWidgetConfigurationIntent, in context: Context) async -> Entry {
+        if context.isPreview {
+            let preview = PreviewWeather.entry(kind: .rain)
+            return Entry(
+                date: preview.date,
+                model: preview.model,
+                message: preview.message,
+                configuration: configuration
+            )
+        }
+
+        let result = await loadInteractiveWidgetData()
+        if let model = result.timeline?.entries.first {
+            return Entry(date: model.date, model: model, message: nil, configuration: configuration)
+        }
+        return Entry(date: Date(), model: nil, message: result.fallbackMessage, configuration: configuration)
+    }
+
+    func timeline(for configuration: MeteoblueWidgetConfigurationIntent, in context: Context) async -> Timeline<Entry> {
+        let result = await loadInteractiveWidgetData()
+        guard let weatherTimeline = result.timeline, !weatherTimeline.entries.isEmpty else {
+            let retry = Date().addingTimeInterval(20 * 60)
+            let entry = Entry(
+                date: Date(),
+                model: nil,
+                message: result.fallbackMessage,
+                configuration: configuration
+            )
+            return Timeline(entries: [entry], policy: .after(retry))
+        }
+
+        let entries = weatherTimeline.entries.map {
+            Entry(date: $0.date, model: $0, message: nil, configuration: configuration)
+        }
+        return Timeline(entries: entries, policy: .after(weatherTimeline.requestedRefreshDate))
+    }
+}
+
+@available(iOS 27.0, *)
+@MainActor
+private func loadInteractiveWidgetData() async -> (timeline: WeatherTimeline?, fallbackMessage: String) {
+    let coordinator = WidgetWeatherCoordinator()
+    let fallbackMessage: String
+    if !coordinator.isConfigured {
+        fallbackMessage = "Configurez la cle meteoblue dans l'app."
+    } else if !coordinator.isWidgetLocationAuthorized {
+        fallbackMessage = "Ouvrez l'app et autorisez la localisation pour le widget."
+    } else {
+        fallbackMessage = "Aucune donnee meteoblue disponible."
+    }
+    return (await coordinator.loadTimeline(), fallbackMessage)
+}
+
+@available(iOS 27.0, *)
+private struct MeteoblueInteractiveWidgetView: View {
+    let entry: MeteoblueInteractiveWidgetEntry
+
+    var body: some View {
+        Group {
+            if let shortcut = entry.configuration.shortcut {
+                Button(intent: RunSystemShortcutIntent(shortcut: shortcut)) {
+                    MeteoblueWidgetContent(model: entry.model, message: entry.message)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Ouvrir l’application Meteoblue")
+            } else {
+                MeteoblueWidgetContent(model: entry.model, message: entry.message)
+                    .overlay {
+                        VStack(spacing: 6) {
+                            Spacer()
+                            Text("Modifiez le widget et choisissez l’app Meteoblue dans « Action au toucher ».")
+                                .font(.caption2.weight(.medium))
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 14)
+                        }
+                    }
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)
@@ -71,13 +197,27 @@ struct MeteoblueWidget: Widget {
     let kind = "MeteoblueWeatherWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: MeteoblueWidgetProvider()) { entry in
-            MeteoblueWidgetView(entry: entry)
+        if #available(iOS 27.0, *) {
+            AppIntentConfiguration(
+                kind: kind,
+                intent: MeteoblueWidgetConfigurationIntent.self,
+                provider: MeteoblueInteractiveWidgetProvider()
+            ) { entry in
+                MeteoblueInteractiveWidgetView(entry: entry)
+            }
+            .configurationDisplayName("Meteoblue Weather")
+            .description("Touchez le widget pour ouvrir directement l’application choisie.")
+            .supportedFamilies([.systemLarge])
+            .contentMarginsDisabled()
+        } else {
+            StaticConfiguration(kind: kind, provider: MeteoblueWidgetProvider()) { entry in
+                MeteoblueWidgetView(entry: entry)
+            }
+            .configurationDisplayName("Meteoblue Weather")
+            .description("Meteo actuelle, six prochaines heures et cinq prochains jours via meteoblue.")
+            .supportedFamilies([.systemLarge])
+            .contentMarginsDisabled()
         }
-        .configurationDisplayName("Meteoblue Weather")
-        .description("Meteo actuelle, six prochaines heures et cinq prochains jours via meteoblue.")
-        .supportedFamilies([.systemLarge])
-        .contentMarginsDisabled()
     }
 }
 

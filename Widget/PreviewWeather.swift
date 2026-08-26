@@ -49,6 +49,7 @@ enum PreviewWeather {
                 maximumCelsius: temp + 7 + Double(index % 5),
                 condition: index == 0 ? condition : (index % 2 == 0 ? .partlyCloudy : .rain),
                 precipitationProbabilityPercent: Double(index * 12),
+                precipitationMillimeters: index == 0 ? 2.4 : (index.isMultiple(of: 3) ? 0.6 : 0),
                 sourcePictocode: nil
             )
         }

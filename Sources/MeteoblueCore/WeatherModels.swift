@@ -111,6 +111,7 @@ public struct DailyForecast: Codable, Equatable, Sendable {
     public let maximumCelsius: Double
     public let condition: WeatherCondition
     public let precipitationProbabilityPercent: Double?
+    public let precipitationMillimeters: Double?
     public let sourcePictocode: Int?
 
     public init(
@@ -119,6 +120,7 @@ public struct DailyForecast: Codable, Equatable, Sendable {
         maximumCelsius: Double,
         condition: WeatherCondition,
         precipitationProbabilityPercent: Double? = nil,
+        precipitationMillimeters: Double? = nil,
         sourcePictocode: Int? = nil
     ) {
         self.date = date
@@ -126,6 +128,7 @@ public struct DailyForecast: Codable, Equatable, Sendable {
         self.maximumCelsius = maximumCelsius
         self.condition = condition
         self.precipitationProbabilityPercent = precipitationProbabilityPercent
+        self.precipitationMillimeters = precipitationMillimeters
         self.sourcePictocode = sourcePictocode
     }
 }
@@ -208,4 +211,33 @@ public struct WeatherDisplayModel: Codable, Equatable, Sendable {
 
     public var todayMinimumCelsius: Double? { nextDays.first?.minimumCelsius ?? snapshot.daily.first?.minimumCelsius }
     public var todayMaximumCelsius: Double? { nextDays.first?.maximumCelsius ?? snapshot.daily.first?.maximumCelsius }
+    public var todayPrecipitationMillimeters: Double? {
+        guard let day = nextDays.first ?? snapshot.daily.first else { return nil }
+        return precipitationMillimeters(for: day.date)
+    }
+
+    public func precipitationMillimeters(for date: Date) -> Double? {
+        let calendar = weatherCalendar
+        if let daily = snapshot.daily.first(where: { calendar.isDate($0.date, inSameDayAs: date) }),
+           let value = daily.precipitationMillimeters,
+           value.isFinite {
+            return max(0, value)
+        }
+
+        guard let interval = calendar.dateInterval(of: .day, for: date) else { return nil }
+        let hourlyValues = snapshot.hourly
+            .filter { interval.contains($0.date) }
+            .compactMap(\.precipitationMillimeters)
+            .filter { $0.isFinite && $0 > 0 }
+        guard !hourlyValues.isEmpty else {
+            return snapshot.hourly.contains { interval.contains($0.date) } ? 0 : nil
+        }
+        return hourlyValues.reduce(0, +)
+    }
+
+    private var weatherCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: snapshot.location.timeZoneIdentifier) ?? .current
+        return calendar
+    }
 }

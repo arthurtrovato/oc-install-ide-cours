@@ -131,17 +131,22 @@ Every documented code in both sets is covered by automated mapping tests. The ap
 
 ## Opening meteoblue from the widget
 
-The URL is tied to the **coordinates stored in the displayed snapshot**, not the phone's later location.
+On iOS 27 and later, the large widget is interactive. After adding it, edit the widget and set **Action au toucher** to **Open App**, then select the official **meteoblue** app. The widget uses Apple's `RunSystemShortcutIntent`, so iOS launches the selected installed app directly from the widget button without opening the Meteoblue Weather host app or the Shortcuts app.
+
+On older iOS versions, the widget keeps the shortcut relay fallback described below. The URL is tied to the **coordinates stored in the displayed snapshot**, not the phone's later location.
 
 The flow is:
 
 ```text
+widget button
+ -> RunSystemShortcutIntent
+ -> official meteoblue app selected in the widget configuration
+
+Legacy fallback:
 widget tap
- -> meteoblueweather:// relay URL
- -> host app validates the HTTPS target
- -> UIApplication opens the meteoblue Universal Link
- -> official meteoblue app when iOS resolves the Universal Link
- -> otherwise meteoblue website in the browser
+ -> shortcuts://run-shortcut
+ -> custom shortcut
+ -> official meteoblue app
 ```
 
 meteoblue's live `apple-app-site-association` currently associates its app with forecast paths including French `/*/meteo/semaine/*` and English `/*/weather/week/*`. The builder therefore generates a coordinate/elevation/time-zone forecast path in that family. The host app rejects non-HTTPS and non-meteoblue targets to avoid an open-redirect style relay.

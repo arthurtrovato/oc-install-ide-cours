@@ -51,7 +51,7 @@ enum SampleWeatherFactory {
             let dayCondition: WeatherCondition = index % 2 == 0 ? condition : .partlyCloudy
             let probability = Double(20 + index * 10)
             let code = condition == .rain ? 6 : 3
-            daily.append(DailyForecast(date: dayDate, minimumCelsius: minTemp, maximumCelsius: maxTemp, condition: dayCondition, precipitationProbabilityPercent: probability, sourcePictocode: code))
+            daily.append(DailyForecast(date: dayDate, minimumCelsius: minTemp, maximumCelsius: maxTemp, condition: dayCondition, precipitationProbabilityPercent: probability, precipitationMillimeters: index.isMultiple(of: 2) ? 1.4 : 0, sourcePictocode: code))
         }
         let location = WeatherLocation(
             coordinate: coordinate,

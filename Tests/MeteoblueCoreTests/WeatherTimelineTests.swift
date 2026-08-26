@@ -7,6 +7,7 @@ final class WeatherTimelineTests: XCTestCase {
         let model = WeatherTimelineBuilder().displayModel(snapshot: SampleWeatherFactory.make(fetchedAt: now), at: now)
         XCTAssertEqual(model.nextHours.count, 6)
         XCTAssertEqual(model.nextDays.count, 5)
+        XCTAssertEqual(model.todayPrecipitationMillimeters, 1.4)
     }
 
     func testFutureEntriesShiftHourlyWithoutNetworkFetch() {

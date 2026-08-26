@@ -49,6 +49,7 @@ L'artefact est conserve seulement 1 jour.
 5. Autoriser la localisation `Lorsque l'app est activee`.
 6. Ajouter le grand widget Meteoblue Weather a l'ecran d'accueil.
 7. Autoriser la localisation du widget si iOS affiche la demande.
+8. Sur iOS 27 ou plus recent, maintenir le widget, choisir **Modifier le widget**, puis regler **Action au toucher** sur **Ouvrir une app → meteoblue**.
 
 ## 4. Renouvellement gratuit
 

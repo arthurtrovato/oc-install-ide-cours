@@ -71,6 +71,7 @@ public enum MeteoblueTransformer {
                 maximumCelsius: max(minimum, maximum),
                 condition: MeteoblueConditionMapper.condition(for: code, set: .daily),
                 precipitationProbabilityPercent: clampedProbability(value(block.precipitationProbability, at: index)),
+                precipitationMillimeters: nonnegative(value(block.precipitation, at: index)),
                 sourcePictocode: code
             ))
         }
@@ -129,6 +130,11 @@ public enum MeteoblueTransformer {
     private static func clampedProbability(_ value: Double?) -> Double? {
         guard let value, value.isFinite else { return nil }
         return min(100, max(0, value))
+    }
+
+    private static func nonnegative(_ value: Double?) -> Double? {
+        guard let value, value.isFinite, value >= 0 else { return nil }
+        return value
     }
 
     private static func inferredDaylight(for date: Date, timeZone: TimeZone) -> Bool {

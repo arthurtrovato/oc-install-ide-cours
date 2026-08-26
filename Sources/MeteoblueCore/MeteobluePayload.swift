@@ -33,6 +33,7 @@ public struct MeteoblueDailyData: Equatable, Sendable {
     public let temperatureMaximum: [Double?]
     public let pictocode: [Int?]
     public let precipitationProbability: [Double?]
+    public let precipitation: [Double?]
     public let sunrise: [String?]
     public let sunset: [String?]
 }
@@ -106,6 +107,7 @@ public enum MeteobluePayloadDecoder {
                 temperatureMaximum: optionalDoubleArray(block, keys: ["temperature_max", "temperature_maximum", "temperature_2m_max"]),
                 pictocode: optionalIntArray(block, keys: ["pictocode", "weathercode"]),
                 precipitationProbability: optionalDoubleArray(block, keys: ["precipitation_probability", "precipitation_probability_mean", "precipitation_probability_max"]),
+                precipitation: optionalDoubleArray(block, keys: ["precipitation", "precipitation_amount", "precipitation_sum", "precipitation_total", "totalprecipitation"]),
                 sunrise: optionalStringArray(block, keys: ["sunrise", "sunrise_time"]),
                 sunset: optionalStringArray(block, keys: ["sunset", "sunset_time"])
             )

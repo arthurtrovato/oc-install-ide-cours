@@ -43,6 +43,7 @@ final class MeteoblueDecodingTests: XCTestCase {
         XCTAssertEqual(snapshot.daily[0].maximumCelsius, 18)
         XCTAssertEqual(snapshot.daily[0].condition, .rain)
         XCTAssertEqual(snapshot.daily[0].precipitationProbabilityPercent, 82)
+        XCTAssertEqual(snapshot.daily[0].precipitationMillimeters, 2.7)
     }
 
     func testPartialResponseSkipsUnusableRowsAndClampsProbability() throws {
