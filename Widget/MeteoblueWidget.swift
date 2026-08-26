@@ -197,27 +197,40 @@ struct MeteoblueWidget: Widget {
     let kind = "MeteoblueWeatherWidget"
 
     var body: some WidgetConfiguration {
+        makeWidgetConfiguration()
+    }
+
+    private func makeWidgetConfiguration() -> some WidgetConfiguration {
         if #available(iOS 27.0, *) {
-            AppIntentConfiguration(
-                kind: kind,
-                intent: MeteoblueWidgetConfigurationIntent.self,
-                provider: MeteoblueInteractiveWidgetProvider()
-            ) { entry in
-                MeteoblueInteractiveWidgetView(entry: entry)
-            }
-            .configurationDisplayName("Meteoblue Weather")
-            .description("Touchez le widget pour ouvrir directement l’application choisie.")
-            .supportedFamilies([.systemLarge])
-            .contentMarginsDisabled()
+            return makeInteractiveWidgetConfiguration()
         } else {
-            StaticConfiguration(kind: kind, provider: MeteoblueWidgetProvider()) { entry in
-                MeteoblueWidgetView(entry: entry)
-            }
-            .configurationDisplayName("Meteoblue Weather")
-            .description("Meteo actuelle, six prochaines heures et cinq prochains jours via meteoblue.")
-            .supportedFamilies([.systemLarge])
-            .contentMarginsDisabled()
+            return makeLegacyWidgetConfiguration()
         }
+    }
+
+    @available(iOS 27.0, *)
+    private func makeInteractiveWidgetConfiguration() -> some WidgetConfiguration {
+        AppIntentConfiguration(
+            kind: kind,
+            intent: MeteoblueWidgetConfigurationIntent.self,
+            provider: MeteoblueInteractiveWidgetProvider()
+        ) { entry in
+            MeteoblueInteractiveWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Meteoblue Weather")
+        .description("Touchez le widget pour ouvrir directement l’application choisie.")
+        .supportedFamilies([.systemLarge])
+        .contentMarginsDisabled()
+    }
+
+    private func makeLegacyWidgetConfiguration() -> some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: MeteoblueWidgetProvider()) { entry in
+            MeteoblueWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Meteoblue Weather")
+        .description("Meteo actuelle, six prochaines heures et cinq prochains jours via meteoblue.")
+        .supportedFamilies([.systemLarge])
+        .contentMarginsDisabled()
     }
 }
 
