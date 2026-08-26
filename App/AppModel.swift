@@ -139,7 +139,8 @@ final class AppModel: ObservableObject {
             return
         }
         diagnostics.deepLinkState = "Ouverture demandée : app meteoblue officielle"
-        UIApplication.shared.open(target, options: [:]) { [weak self] success in
+        let options: [UIApplication.OpenExternalURLOptionsKey: Any] = [.universalLinksOnly: true]
+        UIApplication.shared.open(target, options: options) { [weak self] success in
             Task { @MainActor in
                 self?.diagnostics.deepLinkState = success ? "Ouverture transmise à iOS" : "Échec d’ouverture par iOS"
             }
