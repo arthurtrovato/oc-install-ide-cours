@@ -127,11 +127,18 @@ final class AppModel: ObservableObject {
             diagnostics.deepLinkState = "App ouverte depuis le widget"
             return
         }
-        guard let target = MeteoblueForecastLinkBuilder.validatedTarget(from: url) else {
+
+        // WidgetKit launches the app that owns the widget first. When the
+        // widget carries the official meteoblue universal link, forward that
+        // already-validated URL so iOS can open the official app.
+        let target = MeteoblueForecastLinkBuilder.isAllowedMeteoblueURL(url)
+            ? url
+            : MeteoblueForecastLinkBuilder.validatedTarget(from: url)
+        guard let target else {
             diagnostics.deepLinkState = "Lien refusé (cible non autorisée)"
             return
         }
-        diagnostics.deepLinkState = "Ouverture demandée : meteoblue HTTPS"
+        diagnostics.deepLinkState = "Ouverture demandée : app meteoblue officielle"
         UIApplication.shared.open(target, options: [:]) { [weak self] success in
             Task { @MainActor in
                 self?.diagnostics.deepLinkState = success ? "Ouverture transmise à iOS" : "Échec d’ouverture par iOS"
