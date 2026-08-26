@@ -2,6 +2,15 @@ import Foundation
 
 public enum MeteoblueForecastLinkBuilder {
     public static let relayScheme = "meteoblueweather"
+    public static let officialAppShortcutName = "Ouvrir meteoblue"
+
+    public static var officialAppShortcutURL: URL {
+        var components = URLComponents()
+        components.scheme = "shortcuts"
+        components.host = "run-shortcut"
+        components.queryItems = [URLQueryItem(name: "name", value: officialAppShortcutName)]
+        return components.url!
+    }
 
     public static func webURL(for location: WeatherLocation, language: String = "fr") throws -> URL {
         guard location.coordinate.isValid else { throw WeatherServiceError.invalidRequest }
@@ -44,6 +53,16 @@ public enum MeteoblueForecastLinkBuilder {
               let target = URL(string: raw),
               isAllowedMeteoblueURL(target) else { return nil }
         return target
+    }
+
+    public static func isOfficialAppShortcutURL(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "shortcuts",
+              url.host?.lowercased() == "run-shortcut",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.queryItems?.first(where: { $0.name == "name" })?.value == officialAppShortcutName else {
+            return false
+        }
+        return true
     }
 
     public static func isAllowedMeteoblueURL(_ url: URL) -> Bool {

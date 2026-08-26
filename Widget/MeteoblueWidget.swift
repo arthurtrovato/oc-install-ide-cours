@@ -57,12 +57,10 @@ struct MeteoblueWidgetView: View {
         Group {
             if let model = entry.model {
                 WeatherBoard(model: model)
-                    // meteoblue declares these forecast paths as universal links,
-                    // so iOS can hand the tap to the official meteoblue app.
-                    .widgetURL(model.snapshot.meteoblueURL)
+                    .widgetURL(MeteoblueForecastLinkBuilder.officialAppShortcutURL)
             } else {
                 EmptyWeatherBoard(message: entry.message ?? "Donnees indisponibles")
-                    .widgetURL(URL(string: "https://www.meteoblue.com/fr/meteo/semaine/"))
+                    .widgetURL(MeteoblueForecastLinkBuilder.officialAppShortcutURL)
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)

@@ -28,6 +28,13 @@ final class MeteoblueLinkAndEndpointTests: XCTestCase {
         XCTAssertNil(MeteoblueForecastLinkBuilder.validatedTarget(from: evil))
     }
 
+    func testOfficialAppShortcutURLIsStrictlyValidated() {
+        let shortcut = MeteoblueForecastLinkBuilder.officialAppShortcutURL
+        XCTAssertEqual(shortcut.scheme, "shortcuts")
+        XCTAssertTrue(MeteoblueForecastLinkBuilder.isOfficialAppShortcutURL(shortcut))
+        XCTAssertFalse(MeteoblueForecastLinkBuilder.isOfficialAppShortcutURL(URL(string: "shortcuts://run-shortcut?name=Other")!))
+    }
+
     func testEndpointCombinesBasicHourlyAndDailyPackages() throws {
         let url = try DirectMeteoblueEndpoint().requestURL(for: location, apiKey: "TEST_KEY")
         XCTAssertEqual(url.path, "/packages/basic-1h_basic-day")

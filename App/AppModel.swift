@@ -128,6 +128,16 @@ final class AppModel: ObservableObject {
             return
         }
 
+        if MeteoblueForecastLinkBuilder.isOfficialAppShortcutURL(url) {
+            diagnostics.deepLinkState = "Ouverture demandée : raccourci meteoblue"
+            UIApplication.shared.open(url, options: [:]) { [weak self] success in
+                Task { @MainActor in
+                    self?.diagnostics.deepLinkState = success ? "Raccourci transmis à iOS" : "Échec du lancement du raccourci"
+                }
+            }
+            return
+        }
+
         // WidgetKit launches the app that owns the widget first. When the
         // widget carries the official meteoblue universal link, forward that
         // already-validated URL so iOS can open the official app.
