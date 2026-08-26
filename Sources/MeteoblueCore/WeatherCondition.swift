@@ -89,7 +89,11 @@ public enum MeteoblueConditionMapper {
             case 19, 20, 21, 22: return .overcast
             case 23, 25, 33: return .rain
             case 24, 26, 34: return .snow
-            case 27, 28, 30: return .thunderstorm
+            // 27, 28 and 30 describe rain with thunderstorms possible.
+            // The compact widget should not present that possibility as a
+            // confirmed storm, so retain the precipitation signal without
+            // showing the lightning symbol.
+            case 27, 28, 30: return .rain
             case 29: return .snow
             case 31: return .showers
             case 32: return .snowShowers

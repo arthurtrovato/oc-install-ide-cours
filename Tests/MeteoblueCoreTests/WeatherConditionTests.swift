@@ -17,8 +17,8 @@ final class WeatherConditionTests: XCTestCase {
             .partlyCloudy, .partlyCloudy, .partlyCloudy,
             .haze, .haze, .haze, .fog, .fog, .fog,
             .overcast, .overcast, .overcast, .overcast,
-            .rain, .snow, .rain, .snow, .thunderstorm, .thunderstorm, .snow,
-            .thunderstorm, .showers, .snowShowers, .rain, .snow, .sleet
+            .rain, .snow, .rain, .snow, .rain, .rain, .snow,
+            .rain, .showers, .snowShowers, .rain, .snow, .sleet
         ]
         XCTAssertEqual((1...35).map { MeteoblueConditionMapper.condition(for: $0, set: .hourlyDetailed) }, expected)
     }
