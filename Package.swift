@@ -5,6 +5,7 @@ let package = Package(
     name: "MeteoblueWeather",
     platforms: [
         .iOS(.v17),
+        .watchOS(.v10),
         .macOS(.v13)
     ],
     products: [

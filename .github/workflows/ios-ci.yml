@@ -1,6 +1,6 @@
 name: iOS CI
 
-# Normal pushes validate the project and the private SideStore package path. A manual run also uploads the IPA.
+# Normal pushes validate iPhone + Watch targets and the private SideStore package path. A manual run also uploads the iPhone IPA.
 on:
   push:
     branches: [meteoblue-widget]
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   test-and-build:
     runs-on: xcode-27
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
           xcodegen generate
           test -d MeteoblueWeather.xcodeproj
 
-      - name: Build app and embedded widget
+      - name: Build app and embedded iPhone widget
         run: |
           set -euo pipefail
           xcodebuild \
@@ -78,7 +78,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             clean build
 
-      - name: Build widget extension explicitly
+      - name: Build iPhone widget extension explicitly
         run: |
           set -euo pipefail
           xcodebuild \
@@ -89,6 +89,18 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build
+
+      - name: Build Apple Watch app and rectangular complication
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project MeteoblueWeather.xcodeproj \
+            -scheme MeteoblueWatch \
+            -configuration Debug \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build
 
       - name: Verify no local secret file is tracked
         run: |
@@ -161,7 +173,7 @@ jobs:
           test -d "$APP/PlugIns/MeteoblueWidgetExtension.appex"
           test ! -f "$APP/embedded.mobileprovision"
 
-          # The key must not survive as a plaintext string anywhere in the packaged app.
+          # The key must not survive as a plaintext string anywhere in the packaged iPhone app.
           python3 - "$APP" <<'PY'
           import os
           import pathlib

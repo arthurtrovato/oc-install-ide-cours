@@ -75,15 +75,17 @@ struct WeatherBoard: View {
                 HStack(spacing: 5) {
                     Text("H \(temperature(model.todayMaximumCelsius))  B \(temperature(model.todayMinimumCelsius))")
                         .monospacedDigit()
-                    if let precipitation = precipitationText(model.todayPrecipitationMillimeters) {
+                    if let precipitation = compactDailyPrecipitation(model.todayPrecipitationSummary) {
                         Text(precipitation)
                             .foregroundStyle(.cyan.opacity(0.96))
                             .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.68)
                     }
                 }
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.78))
-                .minimumScaleFactor(0.78)
+                .minimumScaleFactor(0.72)
             }
         }
     }
@@ -127,13 +129,13 @@ struct WeatherBoard: View {
     }
 
     private var dailyRows: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             ForEach(Array(model.nextDays.prefix(5).enumerated()), id: \.offset) { index, day in
                 DailyForecastRow(
                     day: day,
                     allDays: Array(model.nextDays.prefix(5)),
                     isToday: index == 0,
-                    precipitationMillimeters: model.precipitationMillimeters(for: day.date)
+                    precipitationSummary: model.precipitationSummary(for: day.date)
                 )
             }
         }
@@ -164,6 +166,16 @@ struct WeatherBoard: View {
         return String(format: format, locale: Locale(identifier: "fr_FR"), value)
     }
 
+    private func compactDailyPrecipitation(_ summary: DailyPrecipitationSummary) -> String? {
+        guard let value = summary.totalMillimeters, value.isFinite, value > 0 else { return nil }
+        let format = value >= 10 ? "%.0fmm" : "%.1fmm"
+        let amount = String(format: format, locale: Locale(identifier: "fr_FR"), value)
+        if let timing = summary.timingAbbreviation {
+            return "\(amount)·\(timing)"
+        }
+        return amount
+    }
+
     private var atmosphereColors: [Color] {
         switch model.current.condition {
         case .clear, .mostlyClear:
@@ -188,10 +200,10 @@ private struct DailyForecastRow: View {
     let day: DailyForecast
     let allDays: [DailyForecast]
     let isToday: Bool
-    let precipitationMillimeters: Double?
+    let precipitationSummary: DailyPrecipitationSummary
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Text(weekday(day.date))
                 .font(.caption.weight(isToday ? .bold : .semibold))
                 .frame(width: 34, alignment: .leading)
@@ -199,33 +211,46 @@ private struct DailyForecastRow: View {
                 .symbolRenderingMode(.multicolor)
                 .font(.system(size: 14))
                 .frame(width: 20)
-            if let precipitation = precipitationText(precipitationMillimeters) {
-                Text(precipitation)
-                    .font(.system(size: 8, weight: .medium, design: .rounded))
-                    .foregroundStyle(.cyan.opacity(0.96))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                    .frame(width: 32, alignment: .leading)
-            } else {
-                Color.clear.frame(width: 32)
-            }
+            precipitationCell
+                .frame(width: 46, alignment: .leading)
             Text(temp(day.minimumCelsius))
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.white.opacity(0.78))
-                .frame(width: 34, alignment: .trailing)
+                .frame(width: 31, alignment: .trailing)
             TemperatureRangeBar(day: day, allDays: allDays)
                 .frame(height: 7)
             Text(temp(day.maximumCelsius))
                 .font(.caption.weight(.semibold).monospacedDigit())
-                .frame(width: 34, alignment: .trailing)
+                .frame(width: 31, alignment: .trailing)
         }
-        .frame(height: 22)
+        .frame(height: 24)
     }
 
-    private func precipitationText(_ value: Double?) -> String? {
+    @ViewBuilder
+    private var precipitationCell: some View {
+        if let amount = precipitationAmount(precipitationSummary.totalMillimeters) {
+            VStack(alignment: .leading, spacing: -1) {
+                Text(amount)
+                    .font(.system(size: 8, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.cyan.opacity(0.96))
+                    .monospacedDigit()
+                if let timing = precipitationSummary.timingAbbreviation {
+                    Text(timing)
+                        .font(.system(size: 6.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.66))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.62)
+                }
+            }
+            .lineLimit(1)
+        } else {
+            Color.clear
+        }
+    }
+
+    private func precipitationAmount(_ value: Double?) -> String? {
         guard let value, value.isFinite, value > 0 else { return nil }
-        let format = value >= 10 ? "%.0f mm" : "%.1f mm"
+        let format = value >= 10 ? "%.0fmm" : "%.1fmm"
         return String(format: format, locale: Locale(identifier: "fr_FR"), value)
     }
 
