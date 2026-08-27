@@ -35,6 +35,10 @@ targets:
         product: MeteoblueCore
       - target: MeteoblueWidgetExtension
         embed: true
+      - target: MeteoblueWatch
+        embed: true
+        copy:
+          destination: plugins
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arthurtrovato.MeteoblueWidget

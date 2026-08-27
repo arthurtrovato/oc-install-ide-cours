@@ -20,13 +20,26 @@
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.arthurtrovato.MeteoblueWidget.watch</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>meteobluewatch</string>
+            </array>
+        </dict>
+    </array>
     <key>MeteoblueAPIKey</key>
     <string>$(METEOBLUE_API_KEY)</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>La localisation permet d’afficher la météo de votre position dans la complication Meteoblue.</string>
-    <key>WKApplication</key>
+    <key>WKCompanionAppBundleIdentifier</key>
+    <string>com.arthurtrovato.MeteoblueWidget</string>
+    <key>WKWatchKitApp</key>
     <true/>
-    <key>WKWatchOnly</key>
-    <true/>
+    <key>WKRunsIndependentlyOfCompanionApp</key>
+    <false/>
 </dict>
 </plist>

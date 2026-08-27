@@ -19,7 +19,7 @@ struct MeteoblueWatchProvider: TimelineProvider {
             return
         }
         Task { @MainActor in
-            let coordinator = WidgetWeatherCoordinator()
+            let coordinator = WidgetWeatherCoordinator(namespace: "watch-widget")
             if let timeline = await coordinator.loadTimeline(), let first = timeline.entries.first {
                 completion(MeteoblueWatchEntry(date: first.date, model: first, message: nil))
             } else {
@@ -30,7 +30,7 @@ struct MeteoblueWatchProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<MeteoblueWatchEntry>) -> Void) {
         Task { @MainActor in
-            let coordinator = WidgetWeatherCoordinator()
+            let coordinator = WidgetWeatherCoordinator(namespace: "watch-widget")
             guard let weatherTimeline = await coordinator.loadTimeline(), !weatherTimeline.entries.isEmpty else {
                 let retry = Date().addingTimeInterval(20 * 60)
                 let entry = MeteoblueWatchEntry(date: Date(), model: nil, message: fallbackMessage(coordinator))
@@ -47,7 +47,7 @@ struct MeteoblueWatchProvider: TimelineProvider {
     @MainActor
     private func fallbackMessage(_ coordinator: WidgetWeatherCoordinator) -> String {
         if !coordinator.isConfigured { return "Clé meteoblue absente" }
-        if !coordinator.isWidgetLocationAuthorized { return "Ouvrez l’app Watch et autorisez la position" }
+        if !coordinator.isWidgetLocationAuthorized { return "Ouvrez Meteoblue sur la Watch et autorisez la position" }
         return "Météo indisponible"
     }
 
@@ -116,6 +116,7 @@ struct MeteoblueWatchWidgetView: View {
                 }
             }
         }
+        .widgetURL(URL(string: "meteobluewatch://apple-weather"))
         .containerBackground(for: .widget) {
             Color.clear
         }
