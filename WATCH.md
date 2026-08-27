@@ -37,7 +37,7 @@ The Watch app asks for location permission once. The complication declares `NSWi
 
 ## Free installation
 
-The existing SideStore path remains the easiest zero-cost route for the iPhone app. SideStore does not currently provide a reliable supported route for installing a custom watchOS app/complication bundle, so the watch target is deliberately a separate **watch-only** app and is not embedded into the SideStore IPA.
+The existing SideStore path remains the easiest zero-cost route for the iPhone app. SideStore's official documentation targets iOS/iPadOS devices and does not document installation of custom watchOS companion apps or complications, so the watch target is deliberately a separate **watch-only** app and is not embedded into the SideStore IPA.
 
 The zero-cost watch installation path is therefore Xcode Personal Team on the Mac:
 
@@ -49,3 +49,10 @@ The zero-cost watch installation path is therefore Xcode Personal Team on the Ma
 6. Edit the watch face and choose **Meteoblue 5 h** for the rectangular central complication.
 
 A free Personal Team profile normally expires after seven days, so the watch app has to be rebuilt/reinstalled periodically. This limitation comes from Apple's free provisioning rather than the complication code.
+
+## References
+
+- Apple WidgetKit: https://developer.apple.com/documentation/widgetkit/creating-accessory-widgets-and-watch-complications
+- Apple WidgetKit strategy (network/location support table): https://developer.apple.com/documentation/widgetkit/developing-a-widgetkit-strategy
+- Apple location-enabled widgets: https://developer.apple.com/documentation/widgetkit/accessing-location-information-in-widgets
+- SideStore installation scope: https://docs.sidestore.io/docs/installation/install
