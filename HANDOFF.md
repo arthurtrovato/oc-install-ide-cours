@@ -200,6 +200,14 @@ If the complication remains monochrome despite the new build, first check the Wa
 - Exact next action: pull `fea10c3` in the existing Codex Mac session, rebuild/reinstall on Series 9, refresh the complication and report the visual result.
 - Resume prompt for another ChatGPT/Codex session: `Continue le projet Meteoblue sur arthurtrovato/oc-install-ide-cours, branche meteoblue-widget. Lis HANDOFF.md. Le Watch est physiquement fonctionnel; fea10c3 ajoute le nouveau rendu couleur et une typographie légèrement plus grande. Rebuild/reinstall sur la Series 9, valide visuellement et vérifie que le tap ouvre toujours Apple Weather, puis mets HANDOFF.md à jour.`
 
+### Codex execution status — 2026-08-28 22:14 CEST
+
+- The clean `meteoblue-widget` branch was pulled to `b578e2f`, which includes functional commit `fea10c3` and the subsequent Watch complication legibility refinement.
+- The local preparation script completed with the existing ignored API-key configuration. The latest Watch app and complication were rebuilt successfully with the free Personal Team and reinstalled on the physical Apple Watch Series 9.
+- The Watch app was relaunched successfully after the user unlocked the Watch. The extension still has a complete Meteoblue cache (169 hourly entries and 7 daily entries, with current conditions), so the data refresh path is healthy.
+- No source file, bundle identifier, or SideStore package was changed locally. The new visual rendering and tap-to-Apple-Weather behavior still need direct visual/touch confirmation on the Watch face.
+- Exact next action: confirm the new colored complication and slightly larger typography visually; then tap the complication once and confirm that Apple Weather opens.
+
 ### Codex execution status — 2026-08-28 22:11 CEST
 
 - The `meteoblue-widget` branch was pulled cleanly. HEAD is `b578e2f`, which includes functional commit `fea10c3` plus the subsequent complication-legibility refinement on the same Watch view file.
