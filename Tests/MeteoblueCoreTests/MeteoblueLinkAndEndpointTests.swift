@@ -15,6 +15,7 @@ final class MeteoblueLinkAndEndpointTests: XCTestCase {
         XCTAssertEqual(url.host, "www.meteoblue.com")
         XCTAssertTrue(url.absoluteString.contains("/fr/meteo/semaine/"))
         XCTAssertTrue(url.absoluteString.contains("49.402N5.982E320_Europe%2FParis"))
+        XCTAssertTrue(MeteoblueForecastLinkBuilder.isAllowedMeteoblueURL(url))
     }
 
     func testRelayRoundTripPreservesDisplayedPlaceURL() throws {
