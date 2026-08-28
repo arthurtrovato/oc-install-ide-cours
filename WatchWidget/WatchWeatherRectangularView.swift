@@ -5,16 +5,35 @@ import WidgetKit
 struct WatchWeatherRectangularView: View {
     let model: WeatherDisplayModel
 
+    @Environment(\.widgetRenderingMode) private var widgetRenderingMode
+
     var body: some View {
         GeometryReader { proxy in
             let compact = proxy.size.width < 178 || proxy.size.height < 74
-            VStack(spacing: compact ? 1 : 2) {
-                topRow(compact: compact)
-                Divider().opacity(0.28)
-                hourlyRow(compact: compact)
+
+            ZStack {
+                if isFullColor {
+                    LinearGradient(
+                        colors: atmosphereColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+
+                    RoundedRectangle(cornerRadius: compact ? 9 : 10, style: .continuous)
+                        .stroke(.white.opacity(0.16), lineWidth: 0.6)
+                }
+
+                VStack(spacing: compact ? 1 : 2) {
+                    topRow(compact: compact)
+                    Divider()
+                        .foregroundStyle(isFullColor ? .white.opacity(0.34) : .primary.opacity(0.28))
+                    hourlyRow(compact: compact)
+                }
+                .padding(.horizontal, compact ? 3 : 4)
+                .padding(.vertical, 2)
             }
-            .padding(.horizontal, compact ? 2 : 3)
-            .padding(.vertical, 1)
+            .foregroundStyle(primaryTextColor)
+            .clipShape(RoundedRectangle(cornerRadius: compact ? 9 : 10, style: .continuous))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .accessibilityElement(children: .contain)
@@ -23,12 +42,12 @@ struct WatchWeatherRectangularView: View {
     private func topRow(compact: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: compact ? 2 : 3) {
             Text(temperature(model.current.temperatureCelsius))
-                .font(.system(size: compact ? 14 : 16, weight: .bold, design: .rounded))
+                .font(.system(size: compact ? 15 : 17, weight: .bold, design: .rounded))
                 .monospacedDigit()
 
             Text("↑\(shortTemperature(model.todayMaximumCelsius)) ↓\(shortTemperature(model.todayMinimumCelsius))")
-                .font(.system(size: compact ? 7.5 : 8.5, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
+                .font(.system(size: compact ? 8 : 9, weight: .semibold, design: .rounded))
+                .foregroundStyle(secondaryTextColor)
                 .monospacedDigit()
 
             Spacer(minLength: 1)
@@ -44,22 +63,25 @@ struct WatchWeatherRectangularView: View {
         let summary = model.todayPrecipitationSummary
         HStack(spacing: 1) {
             Image(systemName: "drop.fill")
-                .font(.system(size: compact ? 6.5 : 7.5, weight: .semibold))
+                .font(.system(size: compact ? 7 : 8, weight: .semibold))
+                .foregroundStyle(precipitationColor)
                 .widgetAccentable()
             if let amount = summary.totalMillimeters {
                 Text(dailyPrecipitation(amount))
+                    .foregroundStyle(precipitationColor)
                     .monospacedDigit()
             } else {
                 Text("--mm")
+                    .foregroundStyle(precipitationColor)
             }
             if let timing = summary.timingAbbreviation,
                let amount = summary.totalMillimeters,
                amount > 0 {
                 Text(timing)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryTextColor)
             }
         }
-        .font(.system(size: compact ? 6.5 : 7.5, weight: .semibold, design: .rounded))
+        .font(.system(size: compact ? 7 : 8, weight: .semibold, design: .rounded))
         .minimumScaleFactor(0.68)
     }
 
@@ -68,33 +90,68 @@ struct WatchWeatherRectangularView: View {
             ForEach(Array(model.nextHours.prefix(5).enumerated()), id: \.offset) { _, hour in
                 VStack(spacing: 0) {
                     Text(hourLabel(hour.date))
-                        .font(.system(size: compact ? 6.5 : 7.5, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: compact ? 7 : 8, weight: .medium, design: .rounded))
+                        .foregroundStyle(secondaryTextColor)
                         .monospacedDigit()
 
                     Image(systemName: hour.condition.sfSymbolName(isDaylight: hour.isDaylight))
-                        .font(.system(size: compact ? 10.5 : 12, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
+                        .font(.system(size: compact ? 11.5 : 13, weight: .medium))
+                        .symbolRenderingMode(isFullColor ? .multicolor : .hierarchical)
                         .widgetAccentable()
-                        .frame(height: compact ? 13 : 15)
+                        .frame(height: compact ? 14 : 16)
 
                     Text(temperature(hour.temperatureCelsius))
-                        .font(.system(size: compact ? 7.5 : 8.5, weight: .semibold, design: .rounded))
+                        .font(.system(size: compact ? 8.25 : 9.25, weight: .semibold, design: .rounded))
                         .monospacedDigit()
 
                     if let amount = hourlyPrecipitation(hour.precipitationMillimeters) {
                         Text(amount)
-                            .font(.system(size: compact ? 5.5 : 6.5, weight: .medium, design: .rounded))
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: compact ? 6 : 7, weight: .medium, design: .rounded))
+                            .foregroundStyle(precipitationColor)
                             .monospacedDigit()
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                     } else {
-                        Color.clear.frame(height: compact ? 6 : 7)
+                        Color.clear.frame(height: compact ? 7 : 8)
                     }
                 }
                 .frame(maxWidth: .infinity)
             }
+        }
+    }
+
+    private var isFullColor: Bool {
+        widgetRenderingMode == .fullColor
+    }
+
+    private var primaryTextColor: Color {
+        isFullColor ? .white : .primary
+    }
+
+    private var secondaryTextColor: Color {
+        isFullColor ? .white.opacity(0.74) : .primary.opacity(0.68)
+    }
+
+    private var precipitationColor: Color {
+        isFullColor ? .cyan.opacity(0.98) : .primary
+    }
+
+    private var atmosphereColors: [Color] {
+        switch model.current.condition {
+        case .clear, .mostlyClear:
+            return model.current.isDaylight
+                ? [Color(red: 0.12, green: 0.54, blue: 0.92), Color(red: 0.40, green: 0.76, blue: 0.98)]
+                : [Color(red: 0.10, green: 0.16, blue: 0.39), Color(red: 0.31, green: 0.22, blue: 0.58)]
+        case .partlyCloudy:
+            return [Color(red: 0.16, green: 0.45, blue: 0.80), Color(red: 0.35, green: 0.34, blue: 0.70)]
+        case .rain, .showers:
+            return [Color(red: 0.10, green: 0.35, blue: 0.66), Color(red: 0.22, green: 0.21, blue: 0.55)]
+        case .thunderstorm:
+            return [Color(red: 0.16, green: 0.17, blue: 0.39), Color(red: 0.36, green: 0.18, blue: 0.49)]
+        case .snow, .snowShowers, .sleet:
+            return [Color(red: 0.25, green: 0.67, blue: 0.85), Color(red: 0.24, green: 0.37, blue: 0.72)]
+        case .overcast, .fog, .haze, .unknown:
+            return [Color(red: 0.32, green: 0.43, blue: 0.56), Color(red: 0.22, green: 0.27, blue: 0.42)]
         }
     }
 
