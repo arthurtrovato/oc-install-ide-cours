@@ -177,6 +177,15 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 - Installation/app/complication/tap result: still not physically tested because Xcode cannot deploy to the Watch while Developer Mode is disabled.
 - Exact next action: on the Apple Watch, open `Settings > Privacy & Security > Developer Mode`, enable it, and accept the restart/confirmation requested by watchOS; then resume Xcode deployment.
 
+### Codex execution status — 2026-08-28 21:04 CEST
+
+- The Watch is now fully deployable as a physical destination: Apple Watch Series 9, watchOS `26.6`, `arm64e`, Developer Mode enabled, DDI services available, and paired with the iPhone/Mac.
+- A real `xcodebuild` for scheme `MeteoblueWatch` targeting the physical Watch reached provisioning and failed only because `MeteoblueWatch` and `MeteoblueWatchWidgetExtension` have no development team selected.
+- Xcode Settings > Apple Accounts still shows no account. The App Store login is not available to Xcode as a development team.
+- No source-code or project configuration change was made. `Config/Secrets.xcconfig` and the generated Xcode project remain ignored; no secret was displayed or logged.
+- Installation/app/complication/tap result: not yet physically tested; deployment is blocked at signing before installation.
+- Exact next action: in Xcode, open Settings > Apple Accounts, click `Add Apple Account…`, and complete the Apple Account sign-in and any 2FA prompts directly. Do not send credentials or verification codes in chat; then tell Codex only that it is finished.
+
 - Date: 2026-08-28, Europe/Paris.
 - Work performed this turn: created a self-contained Codex Computer Use mission for physical Apple Watch deployment and validation.
 - New documentation file: `CODEX_WATCH_MISSION.md`.
