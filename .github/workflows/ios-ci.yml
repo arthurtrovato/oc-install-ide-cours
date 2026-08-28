@@ -1,6 +1,6 @@
 name: iOS CI
 
-# Pushes validate the iPhone, widget and Watch targets. Manual runs additionally build and upload the keyed SideStore IPA.
+# Pushes validate the iPhone, widget and Watch targets. Manual runs additionally build and upload an iPhone-only keyed SideStore IPA.
 on:
   push:
     branches: [meteoblue-widget]
@@ -185,7 +185,7 @@ jobs:
           PY
           echo "Generated the runner-only credential source without printing the key."
 
-      - name: Build unsigned SideStore IPA
+      - name: Build unsigned SideStore iPhone-only IPA
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
         env:
           METEOBLUE_API_KEY: ${{ secrets.METEOBLUE_API_KEY }}
@@ -211,9 +211,8 @@ jobs:
           APP="$DERIVED/Build/Products/Release-iphoneos/MeteoblueWeather.app"
           IPHONE_WIDGET="$APP/PlugIns/MeteoblueWidgetExtension.appex"
           WATCH_APP="$APP/PlugIns/MeteoblueWatch.app"
-          WATCH_WIDGET="$WATCH_APP/PlugIns/MeteoblueWatchWidgetExtension.appex"
 
-          echo "Validating generated app bundle..."
+          echo "Validating generated app bundle before SideStore compatibility transform..."
           if [ ! -d "$APP" ]; then
             echo "::error::Expected SideStore app bundle was not produced."
             exit 1
@@ -222,15 +221,21 @@ jobs:
             echo "::error::Embedded iPhone widget extension is missing from the SideStore app bundle."
             exit 1
           fi
-          # Xcode 26+ treats modern watchOS apps as Foundation-extension content and embeds them in PlugIns.
           if [ ! -d "$WATCH_APP" ]; then
-            echo "::error::Embedded Apple Watch app is missing from the SideStore app bundle."
+            echo "::error::Expected Watch app was not produced by the Release build."
             exit 1
           fi
-          if [ ! -d "$WATCH_WIDGET" ]; then
-            echo "::error::Embedded Apple Watch WidgetKit extension is missing from the Watch app bundle."
+
+          # SideStore crashes immediately while importing the four-bundle IPA on the target iPhone.
+          # Keep Watch targets fully built/tested above, but exclude the nested Watch app from the
+          # SideStore transport IPA so SideStore only has to parse/sign the iPhone app + widget.
+          echo "Removing nested Watch bundles from the SideStore transport IPA..."
+          rm -rf "$WATCH_APP"
+          if [ -e "$WATCH_APP" ]; then
+            echo "::error::Watch app still exists after iPhone-only SideStore transform."
             exit 1
           fi
+
           if [ -f "$APP/embedded.mobileprovision" ]; then
             echo "::error::Unsigned SideStore app unexpectedly contains embedded.mobileprovision."
             exit 1
@@ -245,8 +250,6 @@ jobs:
           checks = [
               (app / "Info.plist", "com.arthurtrovato.MeteoblueWidget"),
               (app / "PlugIns/MeteoblueWidgetExtension.appex/Info.plist", "com.arthurtrovato.MeteoblueWidget.Widget"),
-              (app / "PlugIns/MeteoblueWatch.app/Info.plist", "com.arthurtrovato.MeteoblueWidget.watchkitapp"),
-              (app / "PlugIns/MeteoblueWatch.app/PlugIns/MeteoblueWatchWidgetExtension.appex/Info.plist", "com.arthurtrovato.MeteoblueWidget.watchkitapp.Widget"),
           ]
           for path, expected_id in checks:
               with path.open("rb") as handle:
@@ -255,12 +258,11 @@ jobs:
               if actual_id != expected_id:
                   raise SystemExit(f"Unexpected bundle id for {path.name}: {actual_id!r} != {expected_id!r}")
 
-          with (app / "PlugIns/MeteoblueWatch.app/Info.plist").open("rb") as handle:
-              watch_info = plistlib.load(handle)
-          if watch_info.get("WKCompanionAppBundleIdentifier") != "com.arthurtrovato.MeteoblueWidget":
-              raise SystemExit("Watch companion bundle identifier does not match the iPhone app")
-          if watch_info.get("WKApplication") is not True:
-              raise SystemExit("Watch bundle is missing WKApplication=true")
+          nested_bundles = list(app.rglob("*.app")) + list(app.rglob("*.appex"))
+          relative = sorted(str(path.relative_to(app)) for path in nested_bundles)
+          expected = ["PlugIns/MeteoblueWidgetExtension.appex"]
+          if relative != expected:
+              raise SystemExit(f"Unexpected nested bundles in iPhone-only IPA: {relative!r}")
           PY
 
           echo "Checking that the Meteoblue key is not present as plaintext..."
@@ -281,15 +283,15 @@ jobs:
                       raise SystemExit(f"Plaintext credential found in packaged file: {path.name}")
           PY
 
-          echo "Packaging Payload directory into IPA..."
+          echo "Packaging iPhone-only Payload directory into IPA..."
           PACKAGE="$RUNNER_TEMP/MeteoblueSideStorePackage"
           mkdir -p "$PACKAGE/Payload"
           cp -R "$APP" "$PACKAGE/Payload/"
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent \
             "$PACKAGE/Payload" \
-            "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore.ipa"
-          /usr/bin/unzip -t "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore.ipa" >/dev/null
-          echo "Unsigned IPA packaged for SideStore re-signing."
+            "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore-iPhoneOnly.ipa"
+          /usr/bin/unzip -t "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore-iPhoneOnly.ipa" >/dev/null
+          echo "Unsigned iPhone-only IPA packaged for SideStore re-signing."
 
       - name: Upload SideStore build log
         if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
@@ -300,11 +302,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 1
 
-      - name: Upload SideStore IPA
+      - name: Upload SideStore iPhone-only IPA
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
         uses: actions/upload-artifact@v4
         with:
-          name: MeteoblueWeather-SideStore
-          path: MeteoblueWeather-SideStore.ipa
+          name: MeteoblueWeather-SideStore-iPhoneOnly
+          path: MeteoblueWeather-SideStore-iPhoneOnly.ipa
           if-no-files-found: error
           retention-days: 1
