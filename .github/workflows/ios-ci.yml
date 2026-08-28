@@ -69,6 +69,8 @@ jobs:
       - name: Build app and embedded iPhone widget
         run: |
           set -euo pipefail
+          LOG="$RUNNER_TEMP/meteoblue-app-widget-xcodebuild.log"
+          set +e
           xcodebuild \
             -project MeteoblueWeather.xcodeproj \
             -scheme MeteoblueWeather \
@@ -76,7 +78,16 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            clean build
+            clean build 2>&1 | tee "$LOG"
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Exact xcodebuild error lines"
+            grep -n -E 'fatal error:|error:' "$LOG" || echo "No literal error: line was found in the captured xcodebuild output."
+            echo "::endgroup::"
+            exit "$status"
+          fi
 
       - name: Build iPhone widget extension explicitly
         run: |
