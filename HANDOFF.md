@@ -228,3 +228,12 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 - The local preparation script was corrected so a `Secrets.xcconfig` file identical to `Secrets.example.xcconfig` is treated as unconfigured. This closes the false-positive path caused by the accented French placeholder not matching the previous text checks.
 - The script is currently paused at its silent API-key prompt in the local interactive Terminal. No key has been read, displayed, logged or written by this agent.
 - Exact next action: the user must paste the Meteoblue API key into that invisible prompt and press Return; the script will then regenerate the ignored Xcode project and continue preparation.
+
+### Codex execution status — 2026-08-28 21:49 CEST
+
+- GitHub confirms that the repository contains the `METEOBLUE_API_KEY` Actions secret, but GitHub does not expose secret values through its API. The value was not displayed or copied to chat.
+- A valid local `Config/Secrets.xcconfig` is now present, ignored by Git and protected with local-only permissions. The value remains hidden; it is not committed, logged or included in the SideStore IPA.
+- `./Scripts/prepare_watch_install.sh` completed with the valid local configuration. A physical-device build of `MeteoblueWatch` and `MeteoblueWatchWidgetExtension` succeeded, and the signed app was reinstalled and relaunched on the paired Apple Watch.
+- The Watch complication extension created a real Meteoblue cache containing current weather data (169 hourly entries and 7 daily entries) with no error. This confirms that the key is accepted at runtime and that the provider is fetching Meteoblue data.
+- The temporary private-artifact workflow experiment was not published because the GitHub OAuth token lacks workflow-file write scope; it was removed from the branch. No Watch bundle was added to the SideStore IPA.
+- Physical visual result still needed: look at the existing `Meteoblue 5 h` rectangular complication and confirm that it now shows weather data. After that, tap the complication once to verify that it opens Apple Weather.
