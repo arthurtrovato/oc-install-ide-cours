@@ -209,19 +209,59 @@ jobs:
             clean build
 
           APP="$DERIVED/Build/Products/Release-iphoneos/MeteoblueWeather.app"
+          IPHONE_WIDGET="$APP/PlugIns/MeteoblueWidgetExtension.appex"
+          WATCH_APP="$APP/PlugIns/MeteoblueWatch.app"
+          WATCH_WIDGET="$WATCH_APP/PlugIns/MeteoblueWatchWidgetExtension.appex"
+
           echo "Validating generated app bundle..."
           if [ ! -d "$APP" ]; then
             echo "::error::Expected SideStore app bundle was not produced."
             exit 1
           fi
-          if [ ! -d "$APP/PlugIns/MeteoblueWidgetExtension.appex" ]; then
+          if [ ! -d "$IPHONE_WIDGET" ]; then
             echo "::error::Embedded iPhone widget extension is missing from the SideStore app bundle."
+            exit 1
+          fi
+          # Xcode 26+ treats modern watchOS apps as Foundation-extension content and embeds them in PlugIns.
+          if [ ! -d "$WATCH_APP" ]; then
+            echo "::error::Embedded Apple Watch app is missing from the SideStore app bundle."
+            exit 1
+          fi
+          if [ ! -d "$WATCH_WIDGET" ]; then
+            echo "::error::Embedded Apple Watch WidgetKit extension is missing from the Watch app bundle."
             exit 1
           fi
           if [ -f "$APP/embedded.mobileprovision" ]; then
             echo "::error::Unsigned SideStore app unexpectedly contains embedded.mobileprovision."
             exit 1
           fi
+
+          python3 - "$APP" <<'PY'
+          import pathlib
+          import plistlib
+          import sys
+
+          app = pathlib.Path(sys.argv[1])
+          checks = [
+              (app / "Info.plist", "com.arthurtrovato.MeteoblueWidget"),
+              (app / "PlugIns/MeteoblueWidgetExtension.appex/Info.plist", "com.arthurtrovato.MeteoblueWidget.Widget"),
+              (app / "PlugIns/MeteoblueWatch.app/Info.plist", "com.arthurtrovato.MeteoblueWidget.watchkitapp"),
+              (app / "PlugIns/MeteoblueWatch.app/PlugIns/MeteoblueWatchWidgetExtension.appex/Info.plist", "com.arthurtrovato.MeteoblueWidget.watchkitapp.Widget"),
+          ]
+          for path, expected_id in checks:
+              with path.open("rb") as handle:
+                  info = plistlib.load(handle)
+              actual_id = info.get("CFBundleIdentifier")
+              if actual_id != expected_id:
+                  raise SystemExit(f"Unexpected bundle id for {path.name}: {actual_id!r} != {expected_id!r}")
+
+          with (app / "PlugIns/MeteoblueWatch.app/Info.plist").open("rb") as handle:
+              watch_info = plistlib.load(handle)
+          if watch_info.get("WKCompanionAppBundleIdentifier") != "com.arthurtrovato.MeteoblueWidget":
+              raise SystemExit("Watch companion bundle identifier does not match the iPhone app")
+          if watch_info.get("WKApplication") is not True:
+              raise SystemExit("Watch bundle is missing WKApplication=true")
+          PY
 
           echo "Checking that the Meteoblue key is not present as plaintext..."
           python3 - "$APP" <<'PY'
