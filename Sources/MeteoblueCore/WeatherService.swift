@@ -101,7 +101,27 @@ public struct MeteoblueWeatherService: WeatherService, Sendable {
 
         do {
             let payload = try MeteobluePayloadDecoder.decode(result.data)
-            let forecastURL = try MeteoblueForecastLinkBuilder.webURL(for: location)
+
+            // The API can resolve both the precise forecast coordinate and elevation even when
+            // Core Location did not provide a reliable altitude. Use those resolved metadata in
+            // the meteoblue link too, otherwise mountain locations could be encoded as 0 m ASL.
+            let linkCoordinate: GeoCoordinate
+            if let latitude = payload.metadata.latitude,
+               let longitude = payload.metadata.longitude,
+               GeoCoordinate(latitude: latitude, longitude: longitude).isValid {
+                linkCoordinate = GeoCoordinate(latitude: latitude, longitude: longitude)
+            } else {
+                linkCoordinate = location.coordinate
+            }
+            let linkLocation = WeatherLocation(
+                coordinate: linkCoordinate,
+                locality: location.locality,
+                countryCode: location.countryCode,
+                timeZoneIdentifier: location.timeZoneIdentifier,
+                elevationMeters: payload.metadata.heightMeters ?? location.elevationMeters
+            )
+            let forecastURL = try MeteoblueForecastLinkBuilder.webURL(for: linkLocation)
+
             return try MeteoblueTransformer.makeSnapshot(
                 payload: payload,
                 requestedLocation: location,
