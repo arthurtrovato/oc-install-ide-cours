@@ -222,3 +222,9 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 - Diagnosis: local `Config/Secrets.xcconfig` exists but still contains the example placeholder (the value was checked without displaying it). The checked-in `AppleSupport/EmbeddedMeteoblueSecret.swift` is intentionally empty for local builds, so the installed Watch app has no API key and cannot fetch Meteoblue data.
 - No source code, bundle ID or SideStore content was changed. The previously installed signed Watch app remains the version `1.0.3`, build `7`.
 - Exact next action: the user must enter the Meteoblue API key into the silent prompt of `./Scripts/prepare_watch_install.sh` from the local repository Terminal. The key must not be sent in chat or displayed in logs; after that, rebuild, reinstall and refresh the complication.
+
+### Codex execution status — 2026-08-28 21:44 CEST
+
+- The local preparation script was corrected so a `Secrets.xcconfig` file identical to `Secrets.example.xcconfig` is treated as unconfigured. This closes the false-positive path caused by the accented French placeholder not matching the previous text checks.
+- The script is currently paused at its silent API-key prompt in the local interactive Terminal. No key has been read, displayed, logged or written by this agent.
+- Exact next action: the user must paste the Meteoblue API key into that invisible prompt and press Return; the script will then regenerate the ignored Xcode project and continue preparation.

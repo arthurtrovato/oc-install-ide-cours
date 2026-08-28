@@ -43,7 +43,7 @@ if [[ ! -f "$SECRETS" ]]; then
 fi
 
 current_key="$(sed -n 's/^[[:space:]]*METEOBLUE_API_KEY[[:space:]]*=[[:space:]]*//p' "$SECRETS" | head -n 1 | tr -d '\r')"
-if [[ -z "$current_key" || "$current_key" == *"votre_cle"* || "$current_key" == *"your_key"* || "$current_key" == *"YOUR_KEY"* ]]; then
+if [[ -z "$current_key" || "$current_key" == *"votre_cle"* || "$current_key" == *"your_key"* || "$current_key" == *"YOUR_KEY"* ]] || cmp -s "$SECRETS" "$EXAMPLE_SECRETS"; then
   printf 'La cle meteoblue n est pas encore configuree localement.\n'
   read -r -s -p 'Colle la cle API meteoblue (elle ne sera pas affichee): ' meteoblue_key
   printf '\n'
