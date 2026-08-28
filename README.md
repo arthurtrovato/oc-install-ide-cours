@@ -6,11 +6,15 @@ The widget presents current conditions, roughly six hourly forecasts, and five d
 
 ## Recommended free installation: SideStore
 
-For a zero-cost setup without owning a Mac, the recommended path is now **GitHub Actions -> SideStore -> iPhone**. GitHub's macOS runner compiles an unsigned device IPA, SideStore re-signs it with the user's free Apple Account, and SideStore can refresh the normal seven-day development signature directly from the iPhone.
+For a zero-cost setup without owning a Mac, the recommended path is **GitHub Actions -> SideStore -> iPhone**. GitHub's macOS runner compiles an unsigned device IPA, SideStore re-signs it with the user's free Apple Account, and SideStore can refresh the normal seven-day development signature directly from the iPhone.
 
-The only computer-dependent step is SideStore's initial device installation/pairing; Windows, macOS or Linux can be used. After that, normal installation and refreshes happen on the iPhone with LocalDevVPN enabled. The exact procedure is in [`SIDESTORE.md`](SIDESTORE.md).
+This path is now validated end to end on a physical iPhone. With build 1.0.3 (7), SideStore stayed open through installation, Meteoblue Weather launched normally, the app icon rendered correctly, the large widget appeared in the WidgetKit gallery, and the widget displayed live meteoblue-backed weather data while its extension was retained with **Keep App Extensions (Use Main Profile)**.
 
-The `iOS CI` workflow creates the `MeteoblueWeather-SideStore` artifact only on a **manual workflow run** on `meteoblue-widget`. It contains the app plus the WidgetKit extension and is intentionally unsigned so SideStore can apply the user's personal development certificate. The artifact expires after one day.
+The only computer-dependent step is SideStore's initial device installation/pairing; Windows, macOS or Linux can be used. After that, normal installation and refreshes happen on the iPhone with LocalDevVPN enabled. The exact procedure and physical-validation notes are in [`SIDESTORE.md`](SIDESTORE.md).
+
+The `iOS CI` workflow creates the `MeteoblueWeather-SideStore` artifact only on a **manual workflow run** on `meteoblue-widget`. It contains the app plus the WidgetKit extension and is intentionally unsigned so SideStore can apply the user's personal development certificate. The artifact expires after one day. Each manual package receives a unique build number derived from the GitHub run number and attempt, avoiding ambiguous reinstallations of two different IPAs with the same `CFBundleVersion`.
+
+The Apple Watch app and Watch widget remain compiled and tested in CI but are deliberately removed from the SideStore transport IPA. Physical testing showed that the four-bundle package containing the nested Watch app caused SideStore to crash during import, while the iPhone app + iPhone widget package installs and works correctly.
 
 ## Current API design
 
@@ -248,11 +252,27 @@ Do not place a real key in shell history on a shared machine. GitHub Actions obt
 5. regenerates the Xcode project;
 6. builds the host iOS app for a generic iOS Simulator with signing disabled;
 7. explicitly builds the WidgetKit extension;
-8. verifies that no local secret file is tracked;
-9. on a manual `workflow_dispatch` from `meteoblue-widget`, generates the runner-only obfuscated key source;
-10. builds an unsigned Release app for a physical iPhone target, verifies the widget extension is embedded and the plaintext key is absent, packages `MeteoblueWeather-SideStore.ipa`, and uploads it for one day.
+8. builds the Watch app and Watch widget separately so Watch regressions still fail CI even though they are not shipped in the SideStore IPA;
+9. verifies that no local secret file is tracked;
+10. on a manual `workflow_dispatch` from `meteoblue-widget`, generates the runner-only obfuscated key source and assigns a unique SideStore build number from the run number/attempt;
+11. builds an unsigned Release app for a physical iPhone target, removes only the nested Watch app from the SideStore transport copy, then verifies the host/widget bundle IDs, matching marketing/build versions, exact dynamic build number, embedded iPhone widget, compiled `Assets.car`, declared primary app icon, absence of a provisioning profile, absence of the plaintext API key and ZIP integrity before uploading `MeteoblueWeather-SideStore.ipa` for one day.
 
 Pull-request contexts never receive the SideStore packaging secret. Normal push runs validate the project but do not publish a keyed IPA.
+
+## Physical-device validation
+
+On 28 August 2026, physical testing established the following:
+
+- the older IPA containing app + iPhone widget + Watch app + Watch widget made SideStore crash during import;
+- the iPhone app + iPhone widget IPA imports correctly;
+- build 1.0.3 (7) installs without SideStore closing;
+- Meteoblue Weather launches successfully;
+- the compiled app icon is displayed correctly;
+- the large widget is offered by WidgetKit;
+- keeping the extension with **Keep App Extensions (Use Main Profile)** works;
+- the installed widget displays meteoblue weather data.
+
+The free **GitHub Actions -> SideStore -> iPhone -> WidgetKit** path is therefore validated end to end for the iPhone app and widget. The Watch distribution path is intentionally separate and remains unvalidated through SideStore.
 
 ## What iOS and SideStore still control
 
@@ -263,9 +283,10 @@ No implementation can force these behaviors:
 - unlimited widget refreshes;
 - the user's location-permission choice;
 - whether the meteoblue Universal Link opens the app or web when the official app is absent or iOS/user link preferences choose the browser;
-- SideStore's own signing/extension compatibility on every future iOS release.
+- SideStore's signing/extension compatibility on future iOS or SideStore releases;
+- SideStore-compatible signing and deployment of the nested watchOS app/widget, which is deliberately excluded from the validated iPhone IPA.
 
-SideStore currently documents that apps should normally not need modification. The project also deliberately avoids App Groups; this matters because a current SideStore issue concerns App Group entitlements for extensions/widgets. Physical-device installation remains the final validation of the free signing path.
+The current SideStore iPhone + WidgetKit path no longer depends on an untested physical-install assumption: it has been exercised successfully on device. Future iOS/SideStore releases can still change signing behavior, so device installation remains a regression check for future builds rather than an unresolved blocker for the current build.
 
 ## Authoritative references checked during implementation
 
