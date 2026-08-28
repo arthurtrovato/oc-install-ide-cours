@@ -20,18 +20,22 @@ public enum MeteoblueForecastLinkBuilder {
         let lon = String(format: "%.3f", locale: Locale(identifier: "en_US_POSIX"), abs(location.coordinate.longitude))
         let elevation = Int((location.elevationMeters ?? 0).rounded())
         let zone = encodePathComponent(location.timeZoneIdentifier)
-        let languageSegment: String
-        let forecastSegment: String
-        switch language.lowercased() {
-        case "de": languageSegment = "de"; forecastSegment = "wetter/woche"
-        case "es": languageSegment = "es"; forecastSegment = "tiempo/semana"
-        case "it": languageSegment = "it"; forecastSegment = "tempo/settimana"
-        case "en": languageSegment = "en"; forecastSegment = "weather/week"
-        default: languageSegment = "fr"; forecastSegment = "meteo/semaine"
-        }
+        let segments = pathSegments(for: language)
         let slug = "\(lat)\(latHemisphere)\(lon)\(lonHemisphere)\(elevation)_\(zone)"
-        let raw = "https://www.meteoblue.com/\(languageSegment)/\(forecastSegment)/\(slug)"
+        let raw = "https://www.meteoblue.com/\(segments.language)/\(segments.forecast)/\(slug)"
         guard let url = URL(string: raw) else { throw WeatherServiceError.invalidRequest }
+        return url
+    }
+
+    public static func canonicalWebURL(slug: String, language: String = "fr") -> URL? {
+        let trimmed = slug.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !trimmed.contains("/"),
+              !trimmed.contains("?"),
+              !trimmed.contains("#") else { return nil }
+        let segments = pathSegments(for: language)
+        guard let url = URL(string: "https://www.meteoblue.com/\(segments.language)/\(segments.forecast)/\(trimmed)"),
+              isAllowedMeteoblueURL(url) else { return nil }
         return url
     }
 
@@ -77,9 +81,83 @@ public enum MeteoblueForecastLinkBuilder {
             path.contains("/tempo/settimana/")
     }
 
+    static func pathSegments(for language: String) -> (language: String, forecast: String) {
+        switch language.lowercased() {
+        case "de": return ("de", "wetter/woche")
+        case "es": return ("es", "tiempo/semana")
+        case "it": return ("it", "tempo/settimana")
+        case "en": return ("en", "weather/week")
+        default: return ("fr", "meteo/semaine")
+        }
+    }
+
     private static func encodePathComponent(_ value: String) -> String {
         var allowed = CharacterSet.urlPathAllowed
         allowed.remove(charactersIn: "/?#%")
         return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value.replacingOccurrences(of: "/", with: "%2F")
+    }
+}
+
+public protocol MeteoblueForecastURLResolving: Sendable {
+    func canonicalForecastURL(for location: WeatherLocation, apiKey: String, language: String) async -> URL?
+}
+
+public struct MeteoblueLocationSearchResolver: MeteoblueForecastURLResolving, Sendable {
+    private let httpClient: any HTTPClient
+    private let maximumDistanceKilometers: Double
+
+    public init(
+        httpClient: any HTTPClient = URLSessionHTTPClient(),
+        maximumDistanceKilometers: Double = 20
+    ) {
+        self.httpClient = httpClient
+        self.maximumDistanceKilometers = maximumDistanceKilometers
+    }
+
+    public func canonicalForecastURL(
+        for location: WeatherLocation,
+        apiKey: String,
+        language: String = "fr"
+    ) async -> URL? {
+        guard location.coordinate.isValid else { return nil }
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return nil }
+
+        let segments = MeteoblueForecastLinkBuilder.pathSegments(for: language)
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "www.meteoblue.com"
+        components.path = "/\(segments.language)/server/search/query3"
+        let lat = String(format: "%.5f", locale: Locale(identifier: "en_US_POSIX"), location.coordinate.latitude)
+        let lon = String(format: "%.5f", locale: Locale(identifier: "en_US_POSIX"), location.coordinate.longitude)
+        components.queryItems = [
+            URLQueryItem(name: "query", value: "\(lat) \(lon)"),
+            URLQueryItem(name: "itemsPerPage", value: "10"),
+            URLQueryItem(name: "apikey", value: key)
+        ]
+        guard let requestURL = components.url,
+              let result = try? await httpClient.get(requestURL),
+              (200..<300).contains(result.statusCode),
+              !result.data.isEmpty,
+              let response = try? JSONDecoder().decode(LocationSearchResponse.self, from: result.data),
+              !response.results.isEmpty else { return nil }
+
+        let candidate = response.results.min { lhs, rhs in
+            (lhs.distance ?? .greatestFiniteMagnitude) < (rhs.distance ?? .greatestFiniteMagnitude)
+        } ?? response.results[0]
+
+        if let distance = candidate.distance, distance > maximumDistanceKilometers {
+            return nil
+        }
+        return MeteoblueForecastLinkBuilder.canonicalWebURL(slug: candidate.url, language: language)
+    }
+
+    private struct LocationSearchResponse: Decodable {
+        let results: [LocationSearchResult]
+    }
+
+    private struct LocationSearchResult: Decodable {
+        let url: String
+        let distance: Double?
     }
 }
