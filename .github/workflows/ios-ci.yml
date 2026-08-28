@@ -247,22 +247,55 @@ jobs:
           import sys
 
           app = pathlib.Path(sys.argv[1])
-          checks = [
-              (app / "Info.plist", "com.arthurtrovato.MeteoblueWidget"),
-              (app / "PlugIns/MeteoblueWidgetExtension.appex/Info.plist", "com.arthurtrovato.MeteoblueWidget.Widget"),
+          host_plist = app / "Info.plist"
+          widget_plist = app / "PlugIns/MeteoblueWidgetExtension.appex/Info.plist"
+
+          with host_plist.open("rb") as handle:
+              host_info = plistlib.load(handle)
+          with widget_plist.open("rb") as handle:
+              widget_info = plistlib.load(handle)
+
+          expected_ids = [
+              (host_info, host_plist, "com.arthurtrovato.MeteoblueWidget"),
+              (widget_info, widget_plist, "com.arthurtrovato.MeteoblueWidget.Widget"),
           ]
-          for path, expected_id in checks:
-              with path.open("rb") as handle:
-                  info = plistlib.load(handle)
+          for info, path, expected_id in expected_ids:
               actual_id = info.get("CFBundleIdentifier")
               if actual_id != expected_id:
                   raise SystemExit(f"Unexpected bundle id for {path.name}: {actual_id!r} != {expected_id!r}")
+
+          for key in ("CFBundleShortVersionString", "CFBundleVersion"):
+              host_value = host_info.get(key)
+              widget_value = widget_info.get(key)
+              if not host_value or host_value != widget_value:
+                  raise SystemExit(
+                      f"Host/widget {key} mismatch: host={host_value!r}, widget={widget_value!r}"
+                  )
+
+          assets = app / "Assets.car"
+          if not assets.is_file() or assets.stat().st_size == 0:
+              raise SystemExit("Compiled Assets.car is missing or empty; app icon/assets were not packaged.")
+
+          icons = host_info.get("CFBundleIcons") or {}
+          primary_icon = icons.get("CFBundlePrimaryIcon") if isinstance(icons, dict) else None
+          if not isinstance(primary_icon, dict):
+              raise SystemExit("CFBundleIcons.CFBundlePrimaryIcon is missing from the packaged app.")
+          icon_files = primary_icon.get("CFBundleIconFiles") or []
+          icon_name = primary_icon.get("CFBundleIconName")
+          if not icon_files and not icon_name:
+              raise SystemExit("Packaged app has no declared primary app icon.")
 
           nested_bundles = list(app.rglob("*.app")) + list(app.rglob("*.appex"))
           relative = sorted(str(path.relative_to(app)) for path in nested_bundles)
           expected = ["PlugIns/MeteoblueWidgetExtension.appex"]
           if relative != expected:
               raise SystemExit(f"Unexpected nested bundles in SideStore IPA: {relative!r}")
+
+          print(
+              "Validated SideStore bundle metadata: "
+              f"version {host_info['CFBundleShortVersionString']} ({host_info['CFBundleVersion']}), "
+              f"primary icon {icon_name or icon_files[0]!r}, app + one iPhone widget."
+          )
           PY
 
           echo "Checking that the Meteoblue key is not present as plaintext..."
