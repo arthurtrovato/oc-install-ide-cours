@@ -34,53 +34,66 @@ Preserve:
 2. Tapping the Apple Watch complication must intentionally open **Apple Weather on the Apple Watch**. This is desired behavior, not a bug.
 3. Intended chain: `complication -> meteobluewatch://apple-weather -> Meteoblue Watch relay -> weather:// -> Apple Weather`.
 4. The unresolved iPhone widget tap that opens Safari is a separate issue and must not block Watch work.
+5. The Watch complication should keep **five upcoming hours** unless the user explicitly agrees to trade density for larger typography.
 
 ## Current functional checkpoint
 
-Latest functional commit: **`fea10c33296719d8ecccd05b1d2978bf004162bc`** — `watch: enrich complication colors and typography`.
+Latest functional commit: **`74a649e4ab9861bfb4f5faffd0d242c5dc1f770c`** — `watch: polish complication readability at density limit`.
 
-This commit changes only `WatchWidget/WatchWeatherRectangularView.swift` and does **not** change weather data, API behavior, cache behavior, bundle IDs or tap destination.
+This changes only `WatchWidget/WatchWeatherRectangularView.swift`. It does **not** change weather data, meteoblue API behavior, cache behavior, location behavior, bundle IDs or the intentional tap destination.
 
-### Visual refresh in `fea10c3`
+### Final readability polish in `74a649e`
 
-The previous physical complication worked but looked too monochrome/small compared with the iPhone widget. The user requested richer colors matching the iPhone widget and a very small font-size increase.
+The user physically tested the previous full-color design (`b578e2f`) on an Apple Watch Series 9 and supplied a photo. The design was functional and substantially improved, but the photo showed two remaining readability issues:
 
-Implemented:
+- the top-right rain text was crowded (`3,3mmjour`);
+- hourly labels such as `23h`, `0h`, `1h` spent precious horizontal space on a redundant suffix.
 
-- reads `widgetRenderingMode` so the complication can use full color when watchOS/the selected face allows it and degrade cleanly when a face forces tinted/vibrant rendering;
-- uses the **same weather-dependent gradient palette as the iPhone widget** in full-color mode;
-- uses white primary text and softer white secondary text over the gradient;
-- precipitation is cyan in full-color mode;
-- hourly SF Symbols use `.multicolor` in full-color mode and `.hierarchical` otherwise;
-- subtle translucent white divider/border added;
-- typography enlarged only slightly:
-  - current temperature about +1 pt;
-  - min/max, precipitation, hour labels and hourly temperatures about +0.5 to +1 pt;
-  - weather symbols about +1 pt;
-- fallback rendering remains compatible with watchOS face tinting.
+Final polish applied while preserving all five hours and all core weather values:
 
-Important limitation: watchOS can deliberately force accessory complications into accented/vibrant/tinted rendering depending on the watch face and its color settings. The app cannot force arbitrary full color when the system chooses one of those rendering modes. The new code displays the iPhone-style palette whenever `.fullColor` is available.
+- full-color background dark veil increased from 11% to 16% to improve white-text contrast while preserving the iPhone-like weather palette;
+- current temperature increased slightly again (compact 17 pt);
+- min/max text increased slightly and stays bold;
+- secondary white text increased to 96% opacity;
+- precipitation cyan made slightly brighter;
+- daily precipitation now includes readable spacing (`3,3 mm` rather than `3,3mm`);
+- the redundant all-day timing (`tte j.` / `jour`) is hidden because the value is already explicitly the daily total;
+- useful timing information such as `soir`, `mat.` or exact ranges is still displayed, separated with a centered dot;
+- hourly labels are now compact two-digit clock values (`23 00 01 02 03`) without the redundant `h` suffix;
+- hourly labels are larger/bolder;
+- hourly condition symbols and temperatures are slightly larger;
+- compact hourly precipitation values remain available when nonzero;
+- five upcoming hours remain present.
 
-## CI for the visual refresh
+### Density limit decision
 
-For functional commit `fea10c33296719d8ecccd05b1d2978bf004162bc`:
+With the current `.accessoryRectangular` slot, the project is now considered at the **reasonable readability/density limit while preserving all of these simultaneously**:
 
-- **Watch CI `33206293859` — SUCCESS**
+- current temperature;
+- daily high/low;
+- daily precipitation summary/timing;
+- five hourly columns;
+- hour, condition icon and temperature for every column;
+- hourly precipitation when relevant.
+
+Further **material** readability gains should not be attempted by blindly enlarging fonts. The next meaningful improvement would require a product tradeoff such as reducing five hours to four, removing the daily precipitation timing, or simplifying another field. Do not make that tradeoff without explicit user approval.
+
+## CI for latest Watch polish
+
+For functional commit `74a649e4ab9861bfb4f5faffd0d242c5dc1f770c`:
+
+- **Watch CI `33207420190` — SUCCESS**
   - Xcode project generation: success;
   - independent Watch app build for `generic/platform=watchOS` physical-device SDK: success;
   - independent Watch app build for simulator: success.
-- **iOS CI `33206293791` — SUCCESS**
-  - Swift package tests: success;
-  - live meteoblue integration test: success;
-  - iPhone app + embedded widget build: success;
-  - explicit iPhone widget build: success;
-  - Apple Watch app + complication build: success;
-  - local-secret tracking check: success;
-  - SideStore packaging steps correctly skipped on ordinary push.
+- iOS CI `33207420200` was still running when this handoff bookkeeping commit was created; Swift tests, live meteoblue integration, project generation and iPhone app/widget build had already succeeded. The Watch-specific CI above is the authoritative validation for this view-only change.
+
+Previous visual CI:
+
+- Watch CI `33206293859` — success.
+- iOS CI `33206293791` — success.
 
 ## Physical Apple Watch state — validated
-
-The Watch route has now been physically exercised on the user's hardware.
 
 Environment observed during Codex deployment:
 
@@ -93,32 +106,19 @@ Environment observed during Codex deployment:
 - Xcode DDI services: available
 - signing route: free **Personal Team**, automatic provisioning
 
-Physically validated before the new visual refresh:
+Physically validated:
 
 - `MeteoblueWatch` builds for the physical Watch;
-- `MeteoblueWatchWidgetExtension` is embedded and signs successfully;
-- signed Watch app installs successfully;
-- Watch app launches successfully;
-- Watch-side location permission was granted;
-- local meteoblue key configuration is valid and remains ignored by Git;
-- runtime created a real meteoblue cache with **169 hourly entries and 7 daily entries**, confirming real API data on Watch;
-- rectangular complication `Meteoblue 5 h` was placed on the Watch face;
-- user now reports the installation/complication is **functional on the physical Watch**.
+- `MeteoblueWatchWidgetExtension` embeds and signs successfully;
+- signed Watch app installs and launches successfully;
+- Watch-side location permission is granted;
+- local meteoblue key configuration is valid and ignored by Git;
+- runtime produced a real cache with 169 hourly entries and 7 daily entries;
+- rectangular complication `Meteoblue 5 h` is installed on the Watch face and functional;
+- the full-color weather gradient renders on the user's selected Watch face;
+- user physically confirmed the `b578e2f` readability build with a photo on 2026-08-28 around 22:13 CEST.
 
-The remaining physical check for this turn is specifically the **new appearance from `fea10c3`** after reinstalling that commit.
-
-## Local secret / preparation history
-
-`Scripts/prepare_watch_install.sh` is the normal local preparation path.
-
-A previous bug treated the French example API-key placeholder as if it were configured. The script was corrected so a `Secrets.xcconfig` identical to the example is treated as unconfigured.
-
-Current intended local behavior:
-
-- valid `Config/Secrets.xcconfig` exists only on the Mac;
-- it is ignored by Git;
-- it is not printed or committed;
-- the Watch physical build uses it locally.
+The **new `74a649e` polish is compiled but not yet visually photographed/confirmed on-device** at the time of this handoff. It must be pulled/reinstalled by the existing Codex Mac session.
 
 ## Watch deployment architecture
 
@@ -142,6 +142,19 @@ Important files:
 - `Scripts/prepare_watch_install.sh`
 - `CODEX_WATCH_MISSION.md`
 
+## Local secret / preparation history
+
+`Scripts/prepare_watch_install.sh` is the normal local preparation path.
+
+Current intended local behavior:
+
+- valid `Config/Secrets.xcconfig` exists only on the Mac;
+- it is ignored by Git;
+- it is not printed or committed;
+- the Watch physical build uses it locally.
+
+A previous bug treating the French example API-key placeholder as configured has already been fixed.
+
 ## iPhone state
 
 Physically validated:
@@ -157,13 +170,14 @@ Unresolved separate issue:
 
 - tapping the iPhone widget still opens the canonical meteoblue forecast in Safari rather than the official meteoblue app;
 - older coordinate URL and canonical place-slug URL both fall back to Safari;
-- do not mix this issue into the Watch visual work.
+- do not mix this issue into Watch visual work.
 
 ## GitHub connector pitfalls
 
 - High-level `delete_file` has previously stalled. Prefer low-level Git Data deletion if deletion is needed.
 - A high-level `create_file` was previously blocked by risk classification; low-level blob/tree/commit/ref operations worked.
 - If a wrapper stalls/blocks, switch strategy rather than repeatedly retrying it.
+- Codex on the Mac may push handoff-only commits concurrently with ChatGPT; always refetch branch HEAD/current file SHA before writing.
 
 ## Immediate next action
 
@@ -173,45 +187,23 @@ Use the existing local Codex thread if convenient:
 
 On the Mac, Codex should:
 
-1. `git fetch origin`;
-2. ensure branch `meteoblue-widget` is clean and pull the latest branch;
-3. verify functional commit `fea10c3` is present;
-4. regenerate the project if needed with `./Scripts/prepare_watch_install.sh` without exposing the API key;
-5. build/sign `MeteoblueWatch` with the existing free Personal Team;
-6. reinstall/launch it on the paired physical Watch;
-7. refresh or remove/re-add `Meteoblue 5 h` if WidgetKit keeps the old snapshot;
-8. visually validate the new gradient, multicolor symbols, cyan precipitation and slightly larger typography;
-9. verify tap still opens Apple Weather;
-10. update this handoff with the physical visual result.
+1. pull the latest `meteoblue-widget` branch;
+2. verify functional commit `74a649e` is present;
+3. rebuild/sign with the existing Personal Team and local ignored secret;
+4. reinstall/launch on the paired Series 9;
+5. refresh/re-add `Meteoblue 5 h` only if WidgetKit retains the previous timeline;
+6. visually confirm the final top-row spacing and `23 00 01...` hourly labels;
+7. verify tap still opens Apple Weather;
+8. update this handoff with the physical result.
 
-If the complication remains monochrome despite the new build, first check the Watch face/complication rendering mode. If watchOS reports accented/vibrant rather than full-color, test a face/slot that allows full-color complications before changing code again.
+## Last handoff update — 2026-08-28 around 22:16 CEST
 
-## Last handoff update
-
-- Date: 2026-08-28 around 22:00 CEST.
-- User reported the Watch installation/complication is installed and functional.
-- User feedback: current complication appearance is not attractive enough, lacks the rich iPhone-widget colors, and text should be only slightly larger.
-- Functional change pushed: `fea10c33296719d8ecccd05b1d2978bf004162bc`.
-- Changed file: `WatchWidget/WatchWeatherRectangularView.swift`.
-- Watch CI `33206293859`: success.
-- iOS CI `33206293791`: success.
-- No data/API/cache/tap behavior changed.
-- Physical installation of this **new visual build** is not yet validated.
-- Exact next action: pull `fea10c3` in the existing Codex Mac session, rebuild/reinstall on Series 9, refresh the complication and report the visual result.
-- Resume prompt for another ChatGPT/Codex session: `Continue le projet Meteoblue sur arthurtrovato/oc-install-ide-cours, branche meteoblue-widget. Lis HANDOFF.md. Le Watch est physiquement fonctionnel; fea10c3 ajoute le nouveau rendu couleur et une typographie légèrement plus grande. Rebuild/reinstall sur la Series 9, valide visuellement et vérifie que le tap ouvre toujours Apple Weather, puis mets HANDOFF.md à jour.`
-
-### Codex execution status — 2026-08-28 22:14 CEST
-
-- The clean `meteoblue-widget` branch was pulled to `b578e2f`, which includes functional commit `fea10c3` and the subsequent Watch complication legibility refinement.
-- The local preparation script completed with the existing ignored API-key configuration. The latest Watch app and complication were rebuilt successfully with the free Personal Team and reinstalled on the physical Apple Watch Series 9.
-- The Watch app was relaunched successfully after the user unlocked the Watch. The extension still has a complete Meteoblue cache (169 hourly entries and 7 daily entries, with current conditions), so the data refresh path is healthy.
-- No source file, bundle identifier, or SideStore package was changed locally. The new visual rendering and tap-to-Apple-Weather behavior still need direct visual/touch confirmation on the Watch face.
-- Exact next action: confirm the new colored complication and slightly larger typography visually; then tap the complication once and confirm that Apple Weather opens.
-
-### Codex execution status — 2026-08-28 22:11 CEST
-
-- The `meteoblue-widget` branch was pulled cleanly. HEAD is `b578e2f`, which includes functional commit `fea10c3` plus the subsequent complication-legibility refinement on the same Watch view file.
-- `./Scripts/prepare_watch_install.sh` completed with the existing ignored local API-key configuration. No source file was changed locally.
-- The latest Watch app and embedded complication built successfully for the physical Apple Watch destination with the existing free Personal Team and installed successfully on the Series 9.
-- Automatic launch was refused because the physical Watch is locked. The new visual complication and the tap-to-Apple-Weather behavior therefore still require the Watch to be unlocked and the complication to be observed/tapped.
-- Exact next action: unlock the Apple Watch and leave it awake on its home screen; then relaunch the Watch app, force the `Meteoblue 5 h` timeline refresh if needed, and verify the tap destination.
+- User supplied a second physical photo of the full-color complication and asked whether more improvement was possible or whether the design was at its maximum.
+- The photo confirmed that the existing `b578e2f` version is readable and attractive, but rain timing and hour-label density still had small optimization headroom.
+- Functional commit pushed: **`74a649e4ab9861bfb4f5faffd0d242c5dc1f770c`**.
+- Changed file: `WatchWidget/WatchWeatherRectangularView.swift` only.
+- Watch CI `33207420190`: **SUCCESS** for physical-device SDK and simulator.
+- No API/cache/location/tap behavior changed.
+- Product assessment: after `74a649e`, further meaningful readability improvement requires sacrificing information or reducing the five-hour horizon; therefore treat this as the density-max baseline unless the user explicitly chooses a tradeoff.
+- Exact next action: Codex pulls/reinstalls `74a649e` on the Series 9 and user gives a final visual confirmation.
+- Resume prompt: `Continue le projet Meteoblue sur arthurtrovato/oc-install-ide-cours, branche meteoblue-widget. Lis HANDOFF.md. Le dernier commit fonctionnel 74a649e est la passe finale de lisibilité de la complication Watch à densité constante. Pull/rebuild/reinstall sur la Series 9, valide visuellement et vérifie le tap Apple Weather, puis mets HANDOFF.md à jour.`
