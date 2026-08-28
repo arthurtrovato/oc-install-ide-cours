@@ -191,7 +191,12 @@ jobs:
           METEOBLUE_API_KEY: ${{ secrets.METEOBLUE_API_KEY }}
         run: |
           set -euo pipefail
+          LOG="$RUNNER_TEMP/meteoblue-sidestore-build.log"
+          exec > >(tee "$LOG") 2>&1
+          trap 'status=$?; if [ "$status" -ne 0 ]; then echo "::error::SideStore build/package failed with status $status"; fi' EXIT
+
           DERIVED="$RUNNER_TEMP/MeteoblueSideStoreDerivedData"
+          echo "Building unsigned Release app for SideStore..."
           xcodebuild \
             -project MeteoblueWeather.xcodeproj \
             -scheme MeteoblueWeather \
@@ -204,10 +209,21 @@ jobs:
             clean build
 
           APP="$DERIVED/Build/Products/Release-iphoneos/MeteoblueWeather.app"
-          test -d "$APP"
-          test -d "$APP/PlugIns/MeteoblueWidgetExtension.appex"
-          test ! -f "$APP/embedded.mobileprovision"
+          echo "Validating generated app bundle..."
+          if [ ! -d "$APP" ]; then
+            echo "::error::Expected SideStore app bundle was not produced."
+            exit 1
+          fi
+          if [ ! -d "$APP/PlugIns/MeteoblueWidgetExtension.appex" ]; then
+            echo "::error::Embedded iPhone widget extension is missing from the SideStore app bundle."
+            exit 1
+          fi
+          if [ -f "$APP/embedded.mobileprovision" ]; then
+            echo "::error::Unsigned SideStore app unexpectedly contains embedded.mobileprovision."
+            exit 1
+          fi
 
+          echo "Checking that the Meteoblue key is not present as plaintext..."
           # The key must not survive as a plaintext string anywhere in the packaged iPhone app.
           python3 - "$APP" <<'PY'
           import os
@@ -226,6 +242,7 @@ jobs:
                       raise SystemExit(f"Plaintext credential found in packaged file: {path.name}")
           PY
 
+          echo "Packaging Payload directory into IPA..."
           PACKAGE="$RUNNER_TEMP/MeteoblueSideStorePackage"
           mkdir -p "$PACKAGE/Payload"
           cp -R "$APP" "$PACKAGE/Payload/"
@@ -234,6 +251,15 @@ jobs:
             "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore.ipa"
           /usr/bin/unzip -t "$GITHUB_WORKSPACE/MeteoblueWeather-SideStore.ipa" >/dev/null
           echo "Unsigned IPA packaged for SideStore re-signing."
+
+      - name: Upload SideStore build log
+        if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/meteoblue-widget'
+        uses: actions/upload-artifact@v4
+        with:
+          name: meteoblue-sidestore-build-${{ github.run_id }}
+          path: ${{ runner.temp }}/meteoblue-sidestore-build.log
+          if-no-files-found: warn
+          retention-days: 1
 
       - name: Upload SideStore IPA
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
