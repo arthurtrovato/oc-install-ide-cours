@@ -98,8 +98,6 @@ struct WatchContentView: View {
     private func openAppleWeather() {
         guard let weatherURL = URL(string: "weather://") else { return }
         weatherLaunchFailed = false
-        openURL(weatherURL) { accepted in
-            weatherLaunchFailed = !accepted
-        }
+        openURL(weatherURL)
     }
 }
