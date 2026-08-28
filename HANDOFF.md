@@ -205,3 +205,10 @@ Codex should:
 - Desired final destination remains Apple Weather on the Watch.
 - Physical validation of `f5ad451` is the only remaining step for this bug.
 - Resume prompt: `Continue le projet Meteoblue sur arthurtrovato/oc-install-ide-cours, branche meteoblue-widget. Lis HANDOFF.md. Le bouton Watch weather:// était physiquement no-op. f5ad451 remplace le second hop par le Universal Link https://weather.apple.com/ avec les coordonnées Watch et passe le Watch CI appareil physique. Rebuild/reinstall sur la Series 9, teste d'abord Ouvrir Météo puis le tap de complication, capture les logs si échec, puis mets HANDOFF.md à jour.`
+
+### Codex execution status — 2026-08-28 22:37 CEST
+
+- The clean `meteoblue-widget` branch was pulled to the expected HEAD `40cd784`, containing `f5ad451` and the readability pass from `74a649e`.
+- The ignored local Meteoblue configuration and existing free Personal Team were accepted by the preparation script. `MeteoblueWatch` and its complication built and signed successfully for the physical Series 9, then installed successfully.
+- The first automatic launch attempt was refused while the Watch was locked; after the user unlocked it, the Watch app relaunched successfully. No button or complication tap has been attempted yet, and no code was changed.
+- Exact next action: test `Ouvrir Météo` first, then test the direct complication tap and capture runtime evidence if either fails.
