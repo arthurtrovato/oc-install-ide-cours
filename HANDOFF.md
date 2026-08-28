@@ -154,6 +154,20 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 
 ## Last handoff update
 
+### Codex execution status — 2026-08-28 20:38 CEST
+
+- Local clone used: `/Users/Arthur/Documents/Codex/2026-08-25/fai/work/oc-install-ide-cours`.
+- Initial HEAD: `214640d12cfc68f317cb42cb656c1f42bbfbfc0c`; current HEAD: same. Branch: `meteoblue-widget`, clean and synchronized with `origin/meteoblue-widget`.
+- Environment: macOS `26.5.2`; Xcode `26.6 (17F113)`; physical iOS/watchOS versions and Watch model not yet visible.
+- Xcode was installed locally from the App Store; the Xcode license was accepted, `xcodebuild -runFirstLaunch` succeeded, and the watchOS 26.5 simulator runtime was installed successfully.
+- `./Scripts/prepare_watch_install.sh` now succeeds. The `MeteoblueWatch` scheme is present and watchOS simulator destinations are visible. The generated Xcode project is ignored by Git.
+- Exact preparation errors resolved: Command Line Tools was initially selected instead of Xcode; then Xcode reported missing `DVTDownloads`; finally `watchOS 26.5 is not installed`. No source-code change was needed.
+- Physical-device state: Xcode Device Hub currently has no device entry; `xcrun devicectl list devices` reports no devices and USB inspection found no iPhone. Wi-Fi and Bluetooth are on; Bluetooth sees `Apple Watch d’Arthur`, but no Xcode pairing record exists yet.
+- Tracked files modified this turn: none. `Config/Secrets.xcconfig` exists locally and remains ignored; no secret was displayed or logged.
+- Installation/app/complication/tap result: not yet physically tested.
+- CI: no new run triggered yet; the previously recorded Watch and iOS CI results remain unchanged.
+- Exact next action: connect the paired iPhone companion to this Mac with a USB cable and leave it unlocked so Xcode can begin pairing; then continue with trust, signing, Watch installation and runtime validation one gate at a time.
+
 - Date: 2026-08-28, Europe/Paris.
 - Work performed this turn: created a self-contained Codex Computer Use mission for physical Apple Watch deployment and validation.
 - New documentation file: `CODEX_WATCH_MISSION.md`.
