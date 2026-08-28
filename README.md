@@ -135,27 +135,32 @@ Every documented code in both sets is covered by automated mapping tests. The ap
 
 ## Opening meteoblue from the widget
 
-On iOS 27 and later, the large widget is interactive. After adding it, edit the widget and set **Action au toucher** to **Open App**, then select the official **meteoblue** app. The widget uses Apple's `RunSystemShortcutIntent`, so iOS launches the selected installed app directly from the widget button without opening the Meteoblue Weather host app or the Shortcuts app.
+The displayed `WeatherSnapshot` stores the exact meteoblue HTTPS forecast URL for the coordinates, elevation and time zone represented by the widget.
 
-On older iOS versions, the widget keeps the shortcut relay fallback described below. The URL is tied to the **coordinates stored in the displayed snapshot**, not the phone's later location.
+On iOS 27 and later, the large widget is interactive. After adding it, edit the widget and set **Action au toucher** to **Open App**, then select the official **meteoblue** app. The widget uses Apple's `RunSystemShortcutIntent`, so iOS launches the selected installed app directly from the widget button.
+
+On earlier iOS versions, no custom Shortcut is required in current builds. The widget uses `widgetURL` with the exact meteoblue URL stored in the displayed snapshot. WidgetKit first activates Meteoblue Weather, which receives that URL through `onOpenURL`. The host app validates that the target is an HTTPS URL on `meteoblue.com`, then asks iOS to open it with `universalLinksOnly`. If the official meteoblue app accepts the Universal Link, it opens directly to that forecast. If the Universal Link is unavailable, Meteoblue Weather retries the identical URL normally so the same forecast opens on the web rather than failing silently.
 
 The flow is:
 
 ```text
+iOS 27+
 widget button
  -> RunSystemShortcutIntent
- -> official meteoblue app selected in the widget configuration
+ -> official meteoblue app selected in widget configuration
 
-Legacy fallback:
+Earlier iOS
 widget tap
- -> shortcuts://run-shortcut
- -> custom shortcut
- -> official meteoblue app
+ -> widgetURL(exact displayed meteoblue HTTPS URL)
+ -> Meteoblue Weather onOpenURL
+ -> strict meteoblue target validation
+ -> universalLinksOnly -> official meteoblue app
+ -> web fallback if the Universal Link is unavailable
 ```
 
-meteoblue's live `apple-app-site-association` currently associates its app with forecast paths including French `/*/meteo/semaine/*` and English `/*/weather/week/*`. The builder therefore generates a coordinate/elevation/time-zone forecast path in that family. The host app rejects non-HTTPS and non-meteoblue targets to avoid an open-redirect style relay.
+meteoblue's live `apple-app-site-association` currently associates its app with forecast paths including French `/*/meteo/semaine/*` and English `/*/weather/week/*`. The builder therefore generates a coordinate/elevation/time-zone forecast path in that family. The host app rejects non-HTTPS and non-meteoblue targets to avoid an open-redirect style relay. Unit tests verify that the exact URL generated for a widget snapshot is accepted by the relay allow-list.
 
-A widget cannot be relied on to directly launch an arbitrary third-party application URL as its own target, so the host-app relay is the minimal reliable WidgetKit-compatible design.
+The pre-iOS-27 direct-tap path is compiled and CI-tested but still requires one physical tap validation after installing the next SideStore build. The weather display itself is already physically validated.
 
 ## Diagnostics
 
@@ -228,7 +233,7 @@ The suite covers at least:
 - missing API key;
 - missing/stale/imprecise location and below/above threshold travel;
 - returning to a cached zone;
-- exact-place meteoblue link generation and relay validation;
+- exact-place meteoblue link generation, direct widget target allow-listing and relay validation;
 - diagnostics secret redaction.
 
 ### Real integration test
@@ -272,7 +277,7 @@ On 28 August 2026, physical testing established the following:
 - keeping the extension with **Keep App Extensions (Use Main Profile)** works;
 - the installed widget displays meteoblue weather data.
 
-The free **GitHub Actions -> SideStore -> iPhone -> WidgetKit** path is therefore validated end to end for the iPhone app and widget. The Watch distribution path is intentionally separate and remains unvalidated through SideStore.
+The free **GitHub Actions -> SideStore -> iPhone -> WidgetKit** path is therefore validated end to end for installation and weather display. The current remaining targeted device check is the new direct pre-iOS-27 widget tap toward the official meteoblue Universal Link/web fallback. The Watch distribution path is intentionally separate and remains unvalidated through SideStore.
 
 ## What iOS and SideStore still control
 
@@ -293,6 +298,7 @@ The current SideStore iPhone + WidgetKit path no longer depends on an untested p
 - meteoblue Forecast API Configurator and Free Weather API package list: https://docs.meteoblue.com/en/weather-apis/forecast-api/forecast-api-configurator
 - meteoblue pictograms: https://docs.meteoblue.com/en/meteo/variables/pictograms
 - meteoblue API overview/security: https://docs.meteoblue.com/en/weather-apis/forecast-api/overview
+- Apple: Linking to specific app scenes from your widget or Live Activity: https://developer.apple.com/documentation/widgetkit/linking-to-specific-app-scenes-from-your-widget-or-live-activity
 - Apple: Accessing location information in widgets: https://developer.apple.com/documentation/widgetkit/accessing-location-information-in-widgets
 - Apple: `isAuthorizedForWidgetUpdates`: https://developer.apple.com/documentation/corelocation/cllocationmanager/isauthorizedforwidgetupdates
 - Apple: Personal Team account limits: https://developer.apple.com/help/account/basics/about-your-developer-account
