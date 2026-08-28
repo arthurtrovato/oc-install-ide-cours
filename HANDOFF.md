@@ -215,3 +215,10 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 - Installation and launch remain confirmed for the physical Apple Watch; the app is signed and installed with the free Personal Team route.
 - The first real Watch timeline has not yet been independently observed because the Watch complication provider runs when the complication is placed on a face.
 - Exact next action: add `Meteoblue 5 h` to a rectangular slot in the Apple Watch face editor, then inspect the rendered complication and its data.
+
+### Codex execution status — 2026-08-28 21:36 CEST
+
+- Physical result: after the user added `Meteoblue 5 h` to a rectangular face slot, the complication displayed `Clé meteoblue absente`.
+- Diagnosis: local `Config/Secrets.xcconfig` exists but still contains the example placeholder (the value was checked without displaying it). The checked-in `AppleSupport/EmbeddedMeteoblueSecret.swift` is intentionally empty for local builds, so the installed Watch app has no API key and cannot fetch Meteoblue data.
+- No source code, bundle ID or SideStore content was changed. The previously installed signed Watch app remains the version `1.0.3`, build `7`.
+- Exact next action: the user must enter the Meteoblue API key into the silent prompt of `./Scripts/prepare_watch_install.sh` from the local repository Terminal. The key must not be sent in chat or displayed in logs; after that, rebuild, reinstall and refresh the complication.
