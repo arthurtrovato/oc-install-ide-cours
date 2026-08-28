@@ -56,7 +56,7 @@ L'artefact est conserve seulement 1 jour.
 6. Autoriser la localisation `Lorsque l'app est activee`.
 7. Ajouter le grand widget Meteoblue Weather a l'ecran d'accueil.
 8. Autoriser la localisation du widget si iOS affiche la demande.
-9. Sur iOS 27 ou plus recent, maintenir le widget, choisir **Modifier le widget**, puis regler **Action au toucher** sur **Ouvrir une app -> meteoblue**. Sur les versions anterieures, aucun raccourci Shortcuts n'est necessaire dans les nouvelles builds : le widget transmet l'URL HTTPS meteoblue exacte du snapshot affiche a l'app hote, qui la valide puis tente de l'ouvrir comme Universal Link dans l'app meteoblue officielle. Si l'Universal Link n'est pas disponible, la meme prevision est ouverte sur le web.
+9. Sur iOS 27 ou plus recent, maintenir le widget, choisir **Modifier le widget**, puis regler **Action au toucher** sur **Ouvrir une app -> meteoblue**. Sur les versions anterieures, aucun raccourci Shortcuts n'est necessaire : le widget transmet l'URL HTTPS meteoblue exacte du snapshot affiche a l'app hote, qui la valide puis tente de l'ouvrir comme Universal Link dans l'app meteoblue officielle. Si iOS a memorise une preference d'ouverture web pour `meteoblue.com`, le navigateur peut s'ouvrir a la place ; voir la procedure de reinitialisation plus bas.
 
 ### Que signifie `Active` dans SideStore ?
 
@@ -113,10 +113,26 @@ Cette transformation ne supprime pas le code Watch du depot et ne masque pas une
 Le widget conserve l'URL meteoblue exacte du lieu et de l'altitude correspondant aux donnees affichees.
 
 - Sur iOS 27 et plus recent, la configuration interactive utilise `RunSystemShortcutIntent` avec l'app choisie dans **Action au toucher**.
-- Sur les versions anterieures, `widgetURL` transmet l'URL HTTPS meteoblue du snapshot a l'app Meteoblue Weather. WidgetKit active d'abord l'app qui possede le widget ; `onOpenURL` valide alors strictement la cible `meteoblue.com`, puis `UIApplication.open` la transmet a iOS avec `universalLinksOnly` afin d'ouvrir l'app meteoblue officielle si son Universal Link est disponible.
-- Si l'app officielle ou l'association Universal Link n'est pas disponible, l'app hote retente la meme URL sans `universalLinksOnly`, ce qui ouvre la prevision meteoblue sur le web.
+- Sur les versions anterieures, `widgetURL` transmet l'URL HTTPS meteoblue du snapshot a l'app Meteoblue Weather. WidgetKit active d'abord l'app qui possede le widget ; `onOpenURL` valide alors strictement la cible `meteoblue.com`, puis `UIApplication.open` la transmet a iOS avec `universalLinksOnly` afin d'ouvrir l'app meteoblue officielle si iOS route actuellement ce domaine vers l'app.
+- Si iOS ne route pas l'Universal Link vers l'app, l'app hote retente la meme URL sans `universalLinksOnly`, ce qui ouvre la prevision meteoblue sur le web plutot que d'echouer silencieusement.
 
-Le code et le contrat d'URL sont couverts par les tests et le CI. Ce nouveau chemin direct pre-iOS 27 devra encore etre confirme par un toucher reel sur le widget apres installation de l'IPA qui le contient ; l'affichage meteo du widget, lui, est deja valide physiquement.
+La build SideStore 1.0.3 (88.1) a valide physiquement toute cette chaine jusqu'au fallback : le toucher du widget a bien ete recu, l'URL de prevision a ete transmise et le navigateur s'est ouvert. Apres ce test, les deux sources d'association ont ete recontrolees : le fichier `apple-app-site-association` servi par `www.meteoblue.com` et sa copie servie par le CDN Apple declarent tous deux l'app actuelle `4UV5CK2DRM.com.meteoblue.meteoblue-weather` ainsi que le chemin francais `/*/meteo/semaine/*`. Le bundle App Store actuel est `com.meteoblue.meteoblue-weather`. Le format d'URL genere par Meteoblue Weather est donc bien dans le perimetre Universal Links de meteoblue.
+
+### Reinitialiser l'ouverture vers l'app meteoblue
+
+Apple memorise le choix de l'utilisateur entre l'app et le site web pour un domaine Universal Links. Une preference web memorisee peut donc faire ouvrir Safari ou le navigateur alors que l'app est installee et que l'association est valide.
+
+La methode la plus explicite pour retablir l'app est :
+
+1. Depuis la page meteoblue ouverte par le widget, copier son URL HTTPS.
+2. Coller cette URL dans une note de l'app **Notes** d'Apple.
+3. Faire un appui long sur le lien dans Notes.
+4. Choisir **Ouvrir dans meteoblue** / **Open in meteoblue** si cette option est proposee, et non l'ouverture dans le navigateur.
+5. Revenir a l'ecran d'accueil puis toucher de nouveau le widget Meteoblue Weather.
+
+Apple documente que le choix effectue depuis ce menu devient le comportement par defaut pour ce domaine. Une autre possibilite, dans Safari, est de toucher **OPEN / OUVRIR** dans le Smart App Banner de meteoblue ; la page meteoblue publie bien `apple-itunes-app` pour l'App Store ID `994459137`.
+
+Cette reinitialisation ne necessite **aucune nouvelle IPA** : la build 88.1 contient deja le bon Universal Link et son fallback web. Si l'option **Ouvrir dans meteoblue** est absente dans Notes, ou si le widget continue d'ouvrir le navigateur apres l'avoir selectionnee, il faut alors poursuivre le diagnostic de l'etat Associated Domains sur l'iPhone.
 
 ## Validation materielle du 28 aout 2026
 
@@ -128,9 +144,10 @@ Resultats observes sur l'iPhone de validation :
 - Meteoblue Weather se lance correctement ;
 - l'icone de l'app est correctement affichee ;
 - le grand widget Meteoblue Weather est disponible dans la galerie de widgets ;
-- le widget affiche effectivement les donnees meteoblue avec l'extension conservee via **Keep App Extensions (Use Main Profile)**.
+- le widget affiche effectivement les donnees meteoblue avec l'extension conservee via **Keep App Extensions (Use Main Profile)** ;
+- build 1.0.3 (88.1) : toucher le widget pre-iOS 27 active correctement le relais puis ouvre la prevision dans le navigateur, ce qui valide le fallback web et revele un routage Universal Links de `meteoblue.com` vers le web sur cet iPhone.
 
-La chaine gratuite **GitHub Actions -> IPA iPhone + widget -> SideStore -> iPhone -> WidgetKit** est donc validee de bout en bout pour l'affichage meteo. Le toucher direct vers l'app meteoblue sur la version d'iOS anterieure a 27 est le prochain test materiel cible.
+La chaine gratuite **GitHub Actions -> IPA iPhone + widget -> SideStore -> iPhone -> WidgetKit** est donc validee de bout en bout pour l'installation et l'affichage meteo. Le dernier controle d'ouverture directe consiste a reinitialiser la preference Universal Link de l'iPhone avec **Ouvrir dans meteoblue** puis a retoucher le widget.
 
 ## Apple Watch
 
@@ -140,4 +157,4 @@ Le paquet Watch imbrique est le facteur discriminant observe dans le crash d'imp
 
 ## Limitation a connaitre
 
-La voie SideStore iPhone + widget est maintenant validee sur appareil reel, y compris l'affichage effectif de la meteo dans le widget. Les principaux comportements qui restent sous le controle d'iOS sont la cadence de rafraichissement WidgetKit, la livraison de nouvelles positions GPS lors des deplacements et les choix de permissions de localisation. La distribution de l'app Watch reste egalement hors du chemin SideStore valide.
+La voie SideStore iPhone + widget est maintenant validee sur appareil reel, y compris l'affichage effectif de la meteo dans le widget. Les principaux comportements qui restent sous le controle d'iOS sont la cadence de rafraichissement WidgetKit, la livraison de nouvelles positions GPS lors des deplacements, les choix de permissions de localisation et le routage final des Universal Links selon la preference memorisee par l'utilisateur. La distribution de l'app Watch reste egalement hors du chemin SideStore valide.
