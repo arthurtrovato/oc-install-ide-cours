@@ -71,15 +71,18 @@ public struct MeteoblueWeatherService: WeatherService, Sendable {
     private let apiKeyProvider: @Sendable () -> String?
     private let endpoint: any MeteoblueEndpointBuilding
     private let httpClient: any HTTPClient
+    private let forecastURLResolver: any MeteoblueForecastURLResolving
 
     public init(
         apiKeyProvider: @escaping @Sendable () -> String?,
         endpoint: any MeteoblueEndpointBuilding = DirectMeteoblueEndpoint(),
-        httpClient: any HTTPClient = URLSessionHTTPClient()
+        httpClient: any HTTPClient = URLSessionHTTPClient(),
+        forecastURLResolver: (any MeteoblueForecastURLResolving)? = nil
     ) {
         self.apiKeyProvider = apiKeyProvider
         self.endpoint = endpoint
         self.httpClient = httpClient
+        self.forecastURLResolver = forecastURLResolver ?? MeteoblueLocationSearchResolver(httpClient: httpClient)
     }
 
     public func fetchWeather(for location: WeatherLocation, at date: Date = Date()) async throws -> WeatherSnapshot {
@@ -102,9 +105,9 @@ public struct MeteoblueWeatherService: WeatherService, Sendable {
         do {
             let payload = try MeteobluePayloadDecoder.decode(result.data)
 
-            // The API can resolve both the precise forecast coordinate and elevation even when
-            // Core Location did not provide a reliable altitude. Use those resolved metadata in
-            // the meteoblue link too, otherwise mountain locations could be encoded as 0 m ASL.
+            // The forecast itself always remains tied to the precise requested/API-resolved
+            // coordinate. A second, best-effort Location Search request is used only to resolve
+            // meteoblue's canonical place slug for app-link compatibility.
             let linkCoordinate: GeoCoordinate
             if let latitude = payload.metadata.latitude,
                let longitude = payload.metadata.longitude,
@@ -120,7 +123,13 @@ public struct MeteoblueWeatherService: WeatherService, Sendable {
                 timeZoneIdentifier: location.timeZoneIdentifier,
                 elevationMeters: payload.metadata.heightMeters ?? location.elevationMeters
             )
-            let forecastURL = try MeteoblueForecastLinkBuilder.webURL(for: linkLocation)
+
+            let fallbackURL = try MeteoblueForecastLinkBuilder.webURL(for: linkLocation)
+            let forecastURL = await forecastURLResolver.canonicalForecastURL(
+                for: linkLocation,
+                apiKey: key,
+                language: "fr"
+            ) ?? fallbackURL
 
             return try MeteoblueTransformer.makeSnapshot(
                 payload: payload,
