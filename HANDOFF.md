@@ -208,3 +208,10 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 - Tracked files modified this step: this handoff only. No source code or bundle IDs changed. No secret was displayed, copied to logs, or committed.
 - CI: no new CI run was triggered by this local-only signing/install step; the last recorded Watch and iOS CI runs remain successful.
 - Exact next action: on the Apple Watch, open Meteoblue and tap `Autoriser la localisation` if that button is shown; then report only that the action is finished so the complication timeline can be validated.
+
+### Codex execution status — 2026-08-28 21:30 CEST
+
+- The user confirmed that the Watch-side location authorization action was completed after the Meteoblue app launch.
+- Installation and launch remain confirmed for the physical Apple Watch; the app is signed and installed with the free Personal Team route.
+- The first real Watch timeline has not yet been independently observed because the Watch complication provider runs when the complication is placed on a face.
+- Exact next action: add `Meteoblue 5 h` to a rectangular slot in the Apple Watch face editor, then inspect the rendered complication and its data.
