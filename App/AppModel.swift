@@ -138,9 +138,11 @@ final class AppModel: ObservableObject {
             return
         }
 
-        // WidgetKit launches the app that owns the widget first. When the
-        // widget carries the official meteoblue universal link, forward that
-        // already-validated URL so iOS can open the official app.
+        // WidgetKit launches the app that owns the widget first. The legacy
+        // widget passes the exact meteoblue forecast URL stored in its displayed
+        // snapshot; validate it here, then forward it as a Universal Link to the
+        // official meteoblue app. If that association is unavailable, fall back
+        // to the same forecast on the web instead of silently doing nothing.
         let target = MeteoblueForecastLinkBuilder.isAllowedMeteoblueURL(url)
             ? url
             : MeteoblueForecastLinkBuilder.validatedTarget(from: url)
@@ -148,11 +150,25 @@ final class AppModel: ObservableObject {
             diagnostics.deepLinkState = "Lien refusé (cible non autorisée)"
             return
         }
+
         diagnostics.deepLinkState = "Ouverture demandée : app meteoblue officielle"
         let options: [UIApplication.OpenExternalURLOptionsKey: Any] = [.universalLinksOnly: true]
         UIApplication.shared.open(target, options: options) { [weak self] success in
             Task { @MainActor in
-                self?.diagnostics.deepLinkState = success ? "Ouverture transmise à iOS" : "Échec d’ouverture par iOS"
+                guard let self else { return }
+                if success {
+                    self.diagnostics.deepLinkState = "Ouverture transmise à l’app meteoblue"
+                    return
+                }
+
+                self.diagnostics.deepLinkState = "Universal Link indisponible — ouverture web"
+                UIApplication.shared.open(target, options: [:]) { [weak self] webSuccess in
+                    Task { @MainActor in
+                        self?.diagnostics.deepLinkState = webSuccess
+                            ? "Prévision meteoblue ouverte sur le web"
+                            : "Échec d’ouverture meteoblue"
+                    }
+                }
             }
         }
     }
