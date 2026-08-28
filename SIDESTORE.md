@@ -1,15 +1,19 @@
 # Installation gratuite sur iPhone avec SideStore
 
-Cette voie est recommandee pour utiliser le widget sans abonnement Apple Developer et sans posseder de Mac.
+Cette voie est recommandee pour utiliser Meteoblue Weather et son widget iPhone sans abonnement Apple Developer et sans posseder de Mac.
 
 ## Principe
 
 - GitHub Actions compile l'app iPhone, son extension WidgetKit, l'app Apple Watch et sa complication WidgetKit sur un runner macOS.
+- Le CI continue donc de verifier que les targets Watch compilent correctement.
+- L'IPA remise a SideStore contient volontairement uniquement l'app iPhone et son widget iPhone.
 - Le fichier `.ipa` reste non signe.
 - SideStore le re-signe avec le certificat de developpement gratuit lie au compte Apple de l'utilisateur.
 - SideStore renouvelle ensuite la signature de 7 jours directement depuis l'iPhone.
 
-Un ordinateur Windows, macOS ou Linux reste necessaire une seule fois pour installer SideStore et associer l'iPhone. Apres cette etape, l'installation, la mise a jour et le renouvellement des apps se font depuis l'iPhone avec LocalDevVPN actif.
+La variante iPhone + widget a ete validee sur appareil reel : SideStore l'importe correctement. La variante precedente qui contenait aussi l'app Watch et sa complication faisait crasher SideStore environ une a deux secondes apres l'envoi du fichier. Les bundles Watch sont donc exclus du paquet SideStore, tout en restant compiles et testes dans le projet.
+
+Un ordinateur Windows, macOS ou Linux reste necessaire une seule fois pour installer SideStore et associer l'iPhone. Apres cette etape, l'installation, la mise a jour et le renouvellement de l'app se font depuis l'iPhone avec LocalDevVPN actif.
 
 Documentation officielle SideStore :
 
@@ -27,7 +31,7 @@ Documentation officielle SideStore :
 
 ## 2. Generer l'IPA Meteoblue Weather
 
-Pour eviter de publier en permanence une IPA contenant la cle Meteoblue, le packaging SideStore n'est lance que manuellement. Les pushes ordinaires continuent de tester l'app iPhone, le widget, l'app Watch et la complication, mais ils ne generent plus la cle embarquee ni l'IPA.
+Pour eviter de publier en permanence une IPA contenant la cle Meteoblue, le packaging SideStore n'est lance que manuellement. Les pushes ordinaires continuent de tester l'app iPhone, le widget, l'app Watch et la complication, mais ils ne generent pas la cle embarquee ni l'IPA.
 
 Depuis l'iPhone :
 
@@ -44,29 +48,30 @@ L'artefact est conserve seulement 1 jour.
 
 1. Activer LocalDevVPN.
 2. Depuis Fichiers, partager/ouvrir `MeteoblueWeather-SideStore.ipa` avec SideStore.
-3. Laisser SideStore signer et installer l'app et ses extensions.
+3. Laisser SideStore signer et installer l'app et son extension WidgetKit.
 4. Ouvrir Meteoblue Weather.
 5. Autoriser la localisation `Lorsque l'app est activee`.
 6. Ajouter le grand widget Meteoblue Weather a l'ecran d'accueil.
 7. Autoriser la localisation du widget si iOS affiche la demande.
-8. Sur iOS 27 ou plus recent, maintenir le widget, choisir **Modifier le widget**, puis regler **Action au toucher** sur **Ouvrir une app → meteoblue**.
-
-L'IPA contient aussi l'app Apple Watch et sa complication. Leur installation effective sur une montre pairee reste a valider sur materiel reel, car SideStore et iOS gardent la main sur la chaine de signature/deploiement des bundles imbriques.
+8. Sur iOS 27 ou plus recent, maintenir le widget, choisir **Modifier le widget**, puis regler **Action au toucher** sur **Ouvrir une app -> meteoblue**.
 
 ## 4. Renouvellement gratuit et App IDs
 
-Le profil de developpement gratuit Apple expire au bout de 7 jours. SideStore peut le renouveler directement depuis l'iPhone ; il faut simplement que LocalDevVPN soit actif lorsque SideStore installe, met a jour ou rafraichit les apps.
+Le profil de developpement gratuit Apple expire au bout de 7 jours. SideStore peut le renouveler directement depuis l'iPhone ; il faut simplement que LocalDevVPN soit actif lorsque SideStore installe, met a jour ou rafraichit l'app.
 
 SideStore documente deux limites importantes pour un compte Apple gratuit : jusqu'a 3 apps actives a la fois (SideStore compris) et jusqu'a 10 App IDs par semaine. Les extensions consomment aussi des App IDs lors de la signature.
 
-Le paquet Meteoblue Weather contient actuellement quatre bundle identifiers distincts, donc il peut consommer jusqu'a quatre App IDs lors d'une premiere signature :
+Le paquet SideStore Meteoblue Weather contient exactement deux bundle identifiers :
 
-- `com.arthurtrovato.MeteoblueWidget` — app iPhone ;
-- `com.arthurtrovato.MeteoblueWidget.Widget` — widget iPhone ;
-- `com.arthurtrovato.MeteoblueWidget.watchkitapp` — app Apple Watch ;
-- `com.arthurtrovato.MeteoblueWidget.watchkitapp.Widget` — complication/widget Watch.
+- `com.arthurtrovato.MeteoblueWidget` - app iPhone ;
+- `com.arthurtrovato.MeteoblueWidget.Widget` - widget iPhone.
 
-Le projet n'utilise pas App Groups, WeatherKit, Associated Domains ou une autre capability payante/avancee. Cela evite notamment la categorie de bug SideStore actuellement ouverte autour des App Groups utilises par les widgets/extensions.
+Les deux bundle identifiers Watch existent toujours dans le projet mais ne sont pas inclus dans l'IPA SideStore :
+
+- `com.arthurtrovato.MeteoblueWidget.watchkitapp` - app Apple Watch ;
+- `com.arthurtrovato.MeteoblueWidget.watchkitapp.Widget` - complication/widget Watch.
+
+Le projet n'utilise pas App Groups, WeatherKit, Associated Domains ou une autre capability payante/avancee.
 
 ## Cle Meteoblue
 
@@ -76,10 +81,31 @@ Cette mesure est une obfuscation, pas un coffre-fort : une cle embarquee dans un
 
 ## Validation automatique du paquet
 
-Lors du run manuel, le CI refuse maintenant l'IPA si l'un des quatre bundles attendus manque, si un bundle identifier est inattendu, si l'app Watch ne pointe pas vers le bon compagnon iPhone, si un profil de provisioning est deja embarque ou si la cle Meteoblue survit en clair dans le paquet.
+Lors du run manuel, le CI :
 
-Avec Xcode 26 et plus recent, l'app Watch moderne est embarquee sous `PlugIns/` dans l'app iPhone. Le projet force ce placement pour eviter l'erreur d'installation connue lorsque XcodeGen utilise l'ancien dossier `Watch/` avec les toolchains recentes.
+- construit d'abord l'app Release complete et verifie que l'app Watch existe bien dans le produit de build ;
+- retire ensuite les bundles Watch uniquement de la copie destinee a SideStore ;
+- refuse l'IPA si l'app iPhone ou son widget manque ;
+- refuse l'IPA si un bundle `.app` imbrique subsiste ;
+- exige comme unique bundle imbrique `PlugIns/MeteoblueWidgetExtension.appex` ;
+- verifie les deux bundle identifiers iPhone ;
+- refuse un `embedded.mobileprovision` inattendu ;
+- refuse le paquet si la cle Meteoblue apparait encore en clair ;
+- verifie l'integrite ZIP de l'IPA avant upload.
+
+Cette transformation ne supprime pas le code Watch du depot et ne masque pas une erreur de compilation Watch : le CI compile toujours l'app Watch et sa complication separement avant de produire l'IPA.
+
+## Apple Watch
+
+L'app Watch et sa complication restent implementees et testees dans le projet, mais elles ne sont actuellement pas distribuees par SideStore.
+
+Validation materielle du 28 aout 2026 :
+
+- IPA app iPhone + widget iPhone + app Watch + complication : SideStore crashe environ 1 a 2 secondes apres l'import ;
+- IPA app iPhone + widget iPhone, sans Watch : import SideStore reussi.
+
+Le paquet Watch imbrique est donc le facteur discriminant observe. Tant qu'une chaine de signature/deploiement Watch compatible SideStore n'est pas etablie et testee, la voie gratuite recommandee reste SideStore pour l'iPhone et son widget uniquement. Une installation Watch pourra etre retestee separement si SideStore ajoute ou documente une prise en charge fiable des bundles watchOS, ou via Xcode sur Mac avec une Personal Team.
 
 ## Limitation a connaitre
 
-SideStore prend en charge les apps avec extensions et indique que les apps ne devraient normalement pas necessiter de modification. Il existe toutefois des bugs SideStore ponctuels autour des widgets/extensions et du pairing selon les versions iOS. Le premier essai sur l'iPhone puis sur l'Apple Watch reste donc la validation finale de la chaine de signature et de deploiement.
+SideStore prend en charge l'app iPhone et son extension WidgetKit dans la configuration ci-dessus, qui a maintenant ete validee sur appareil reel. SideStore et iOS gardent toutefois la main sur la signature, les App IDs et les futurs changements de compatibilite. Si une mise a jour SideStore ou iOS modifie ce comportement, le test d'import sur appareil reste l'arbitre final.
