@@ -212,3 +212,12 @@ Codex should:
 - The ignored local Meteoblue configuration and existing free Personal Team were accepted by the preparation script. `MeteoblueWatch` and its complication built and signed successfully for the physical Series 9, then installed successfully.
 - The first automatic launch attempt was refused while the Watch was locked; after the user unlocked it, the Watch app relaunched successfully. No button or complication tap has been attempted yet, and no code was changed.
 - Exact next action: test `Ouvrir Météo` first, then test the direct complication tap and capture runtime evidence if either fails.
+
+### Codex execution status — 2026-08-28 22:51 CEST
+
+- The physical test of `f5ad451` reproduced the visible error `URL failed to load. This URL can't be viewed on your iPhone.` when the Watch button attempted the HTTPS Apple Weather link.
+- A console session was attached around the tap; the device confirmed app launch and termination but emitted no additional application log. A direct log tunnel attempt timed out, so the visible watchOS error and the exact source path were the available runtime evidence.
+- Diagnosis: SwiftUI's environment `openURL` is the wrong watchOS launch mechanism for this system Universal Link; Apple documents `WKExtension.openSystemURL` for Universal Links initiated on watchOS.
+- Minimal code change made only in `WatchApp/WatchContentView.swift`: import `WatchKit`, remove the unused SwiftUI `openURL` environment, and call `WKExtension.shared().openSystemURL(...)` for the Apple Weather URL. This covers both the app button and the complication relay.
+- The corrected Watch app and complication built successfully for the physical Series 9, installed successfully, and relaunched successfully. The button retest and direct complication tap are still pending.
+- Exact next action: tap `Ouvrir Météo` once on the launched Watch app and report whether Apple Météo opens; if successful, test the Meteoblue complication tap.

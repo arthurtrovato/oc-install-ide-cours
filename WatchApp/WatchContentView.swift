@@ -1,10 +1,10 @@
 import CoreLocation
 import Foundation
 import SwiftUI
+import WatchKit
 import WidgetKit
 
 struct WatchContentView: View {
-    @Environment(\.openURL) private var openURL
     @State private var authorizationStatus = CLLocationManager().authorizationStatus
     @State private var requesting = false
     @State private var openingWeather = false
@@ -97,7 +97,7 @@ struct WatchContentView: View {
         Task { @MainActor in
             let client = AppleLocationClient()
             let location = await client.requestCurrentLocation(promptIfNeeded: false)
-            openURL(appleWeatherURL(for: location))
+            WKExtension.shared().openSystemURL(appleWeatherURL(for: location))
             openingWeather = false
         }
     }
