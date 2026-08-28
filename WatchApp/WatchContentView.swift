@@ -1,4 +1,5 @@
 import CoreLocation
+import Foundation
 import SwiftUI
 import WidgetKit
 
@@ -7,7 +8,6 @@ struct WatchContentView: View {
     @State private var authorizationStatus = CLLocationManager().authorizationStatus
     @State private var requesting = false
     @State private var openingWeather = false
-    @State private var weatherLaunchFailed = false
 
     private var isConfigured: Bool {
         AppleEnvironment.make(namespace: "watch-app").configuration.isConfigured
@@ -45,13 +45,6 @@ struct WatchContentView: View {
                     Label(openingWeather ? "Ouverture…" : "Ouvrir Météo", systemImage: "cloud.sun.fill")
                 }
                 .disabled(openingWeather)
-
-                if weatherLaunchFailed {
-                    Text("Météo Apple n’a pas accepté le lien sur cette montre.")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                        .multilineTextAlignment(.center)
-                }
 
                 if !isConfigured {
                     Text("Clé meteoblue absente du build.")
@@ -100,17 +93,12 @@ struct WatchContentView: View {
     private func openAppleWeather() {
         guard !openingWeather else { return }
         openingWeather = true
-        weatherLaunchFailed = false
 
         Task { @MainActor in
             let client = AppleLocationClient()
             let location = await client.requestCurrentLocation(promptIfNeeded: false)
-            let weatherURL = appleWeatherURL(for: location)
-
-            openURL(weatherURL) { accepted in
-                openingWeather = false
-                weatherLaunchFailed = !accepted
-            }
+            openURL(appleWeatherURL(for: location))
+            openingWeather = false
         }
     }
 
