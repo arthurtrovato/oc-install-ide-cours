@@ -48,18 +48,25 @@ L'artefact est conserve seulement 1 jour.
 
 1. Activer LocalDevVPN.
 2. Depuis Fichiers, partager/ouvrir `MeteoblueWeather-SideStore.ipa` avec SideStore.
-3. Laisser SideStore signer et installer l'app et son extension WidgetKit.
-4. Ouvrir Meteoblue Weather.
-5. Autoriser la localisation `Lorsque l'app est activee`.
-6. Ajouter le grand widget Meteoblue Weather a l'ecran d'accueil.
-7. Autoriser la localisation du widget si iOS affiche la demande.
-8. Sur iOS 27 ou plus recent, maintenir le widget, choisir **Modifier le widget**, puis regler **Action au toucher** sur **Ouvrir une app -> meteoblue**.
+3. SideStore affiche `App Contains Extensions` car le paquet contient le widget. Choisir **Keep App Extensions (Use Main Profile)**. Cette option conserve le widget tout en evitant d'enregistrer inutilement un App ID distinct lorsqu'un profil principal partage peut etre utilise.
+4. Laisser la barre de progression aller au bout. Sur l'iPhone de validation, SideStore s'est ferme juste apres cette phase lors d'une reinstallation de la meme build, mais l'ecran `My Apps` indiquait ensuite bien `Meteoblue Weather` dans `Active` avec `7 DAYS`. Dans ce cas, traiter l'installation comme reussie et verifier directement l'app sur iOS au lieu de relancer immediatement le meme IPA.
+5. Ouvrir Meteoblue Weather depuis l'ecran d'accueil, la Bibliotheque d'apps ou la recherche Spotlight.
+6. Autoriser la localisation `Lorsque l'app est activee`.
+7. Ajouter le grand widget Meteoblue Weather a l'ecran d'accueil.
+8. Autoriser la localisation du widget si iOS affiche la demande.
+9. Sur iOS 27 ou plus recent, maintenir le widget, choisir **Modifier le widget**, puis regler **Action au toucher** sur **Ouvrir une app -> meteoblue**.
+
+### Comment savoir si l'installation a reussi
+
+Dans SideStore > `My Apps`, Meteoblue Weather doit apparaitre sous `Active` avec une duree restante, normalement `7 DAYS` juste apres signature. Si cette entree est presente, la signature/installation a ete acceptee par SideStore meme si son interface s'est fermee a la fin de l'operation.
+
+Ne pas confondre ce cas avec le crash d'import de l'ancienne IPA Watch : dans ce dernier cas SideStore disparaissait environ une a deux secondes apres l'envoi du fichier, avant que Meteoblue Weather ne soit installee comme app active.
 
 ## 4. Renouvellement gratuit et App IDs
 
 Le profil de developpement gratuit Apple expire au bout de 7 jours. SideStore peut le renouveler directement depuis l'iPhone ; il faut simplement que LocalDevVPN soit actif lorsque SideStore installe, met a jour ou rafraichit l'app.
 
-SideStore documente deux limites importantes pour un compte Apple gratuit : jusqu'a 3 apps actives a la fois (SideStore compris) et jusqu'a 10 App IDs par semaine. Les extensions consomment aussi des App IDs lors de la signature.
+SideStore documente deux limites importantes pour un compte Apple gratuit : jusqu'a 3 apps actives a la fois (SideStore compris) et jusqu'a 10 App IDs par semaine. Les extensions peuvent consommer des App IDs lors de la signature selon le mode de profil choisi.
 
 Le paquet SideStore Meteoblue Weather contient exactement deux bundle identifiers :
 
