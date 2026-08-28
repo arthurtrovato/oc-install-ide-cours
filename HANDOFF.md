@@ -10,7 +10,8 @@
 - Working branch: **`meteoblue-widget` only**.
 - Do **not** modify `master`.
 - Do **not** modify `ProjetLedor`.
-- Functional checkpoint immediately before this handoff file was created: `29f7c2550575c9cddfd1ca51920502a091847cf6` (`ci: remove canonical-link dispatch bootstrap`).
+- Latest functional checkpoint: `29f7c2550575c9cddfd1ca51920502a091847cf6` (`ci: remove canonical-link dispatch bootstrap`).
+- Current branch HEAD after handoff bookkeeping: `c47716e43402bddfadd584620dbdba42434ecc1c` plus this handoff-finalization commit.
 - Commits that only update `HANDOFF.md` are bookkeeping commits; the most recent functional checkpoint should always be stated explicitly in this document.
 
 ## Persistent product goal
@@ -287,10 +288,13 @@ Use this when moving to a fresh ChatGPT conversation:
 ## Last handoff update
 
 - Date: 2026-08-28
-- Reason: initial creation requested explicitly by the user so project state survives ChatGPT conversation/tool stalls.
-- Branch head before this handoff bookkeeping commit: `29f7c2550575c9cddfd1ca51920502a091847cf6`.
+- Reason: initial handoff creation and finalization requested explicitly by the user so project state survives ChatGPT conversation/tool stalls.
+- Current branch HEAD entering this finalization update: `c47716e43402bddfadd584620dbdba42434ecc1c` (handoff-only bookkeeping commit).
+- Latest functional commit: `29f7c2550575c9cddfd1ca51920502a091847cf6`.
+- Files changed this turn: `HANDOFF.md` only.
 - Latest functional CI: run `33192852966`, success.
 - Latest manual SideStore packaging run: `33192536496`, success, build `1.0.3 (95.1)`.
 - Latest physical blocker: build 95.1 could not be installed because SideStore returned `Minimuxer.MinimuxerError 27` / `AFC was unable to manage files on the device`; user currently has no Wi-Fi available.
-- Latest user decision: do not upload IPA files to Google Drive; Apple Watch complication tap must intentionally open Apple Weather on the Watch.
+- Latest user decisions: do not upload IPA files to Google Drive; Apple Watch complication tap must intentionally open Apple Weather on the Watch; update `HANDOFF.md` at the end of every substantive project turn.
 - Next executable technical track without waiting for Wi-Fi: investigate/develop a separate Apple Watch installation path while preserving the current complication tap behavior.
+- Suggested resume prompt: `Continue the Meteoblue widget project in arthurtrovato/oc-install-ide-cours, branch meteoblue-widget. Read HANDOFF.md first and resume from its Immediate next actions section. Update HANDOFF.md before ending the turn.`
