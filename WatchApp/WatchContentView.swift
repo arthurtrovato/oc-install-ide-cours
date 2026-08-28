@@ -6,6 +6,7 @@ struct WatchContentView: View {
     @Environment(\.openURL) private var openURL
     @State private var authorizationStatus = CLLocationManager().authorizationStatus
     @State private var requesting = false
+    @State private var openingWeather = false
     @State private var weatherLaunchFailed = false
 
     private var isConfigured: Bool {
@@ -41,13 +42,14 @@ struct WatchContentView: View {
                 Button {
                     openAppleWeather()
                 } label: {
-                    Label("Ouvrir Météo", systemImage: "cloud.sun.fill")
+                    Label(openingWeather ? "Ouverture…" : "Ouvrir Météo", systemImage: "cloud.sun.fill")
                 }
+                .disabled(openingWeather)
 
                 if weatherLaunchFailed {
-                    Text("Météo Apple n’a pas pu être ouverte automatiquement sur cette montre.")
+                    Text("Météo Apple n’a pas accepté le lien sur cette montre.")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.orange)
                         .multilineTextAlignment(.center)
                 }
 
@@ -96,8 +98,30 @@ struct WatchContentView: View {
     }
 
     private func openAppleWeather() {
-        guard let weatherURL = URL(string: "weather://") else { return }
+        guard !openingWeather else { return }
+        openingWeather = true
         weatherLaunchFailed = false
-        openURL(weatherURL)
+
+        Task { @MainActor in
+            let client = AppleLocationClient()
+            let location = await client.requestCurrentLocation(promptIfNeeded: false)
+            let weatherURL = appleWeatherURL(for: location)
+
+            openURL(weatherURL) { accepted in
+                openingWeather = false
+                weatherLaunchFailed = !accepted
+            }
+        }
+    }
+
+    private func appleWeatherURL(for location: CLLocation?) -> URL {
+        var components = URLComponents(string: "https://weather.apple.com/")!
+        if let coordinate = location?.coordinate {
+            components.queryItems = [
+                URLQueryItem(name: "lat", value: String(format: "%.6f", coordinate.latitude)),
+                URLQueryItem(name: "long", value: String(format: "%.6f", coordinate.longitude))
+            ]
+        }
+        return components.url!
     }
 }
