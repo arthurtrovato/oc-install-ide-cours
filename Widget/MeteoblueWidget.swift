@@ -1,4 +1,5 @@
 import AppIntents
+import Foundation
 import SwiftUI
 import WidgetKit
 import MeteoblueCore
@@ -54,10 +55,14 @@ struct MeteoblueWidgetProvider: TimelineProvider {
 struct MeteoblueWidgetView: View {
     let entry: MeteoblueWidgetEntry
 
+    private var tapURL: URL {
+        entry.model?.snapshot.meteoblueURL ?? URL(string: "meteoblueweather://open-app")!
+    }
+
     var body: some View {
         MeteoblueWidgetContent(model: entry.model, message: entry.message)
-            .widgetURL(MeteoblueForecastLinkBuilder.officialAppShortcutURL)
-        .containerBackground(.fill.tertiary, for: .widget)
+            .widgetURL(tapURL)
+            .containerBackground(.fill.tertiary, for: .widget)
     }
 }
 
