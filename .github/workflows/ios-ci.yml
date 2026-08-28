@@ -196,7 +196,8 @@ jobs:
           trap 'status=$?; if [ "$status" -ne 0 ]; then echo "::error::SideStore build/package failed with status $status"; fi' EXIT
 
           DERIVED="$RUNNER_TEMP/MeteoblueSideStoreDerivedData"
-          echo "Building unsigned Release app for SideStore..."
+          export BUILD_NUMBER="${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          echo "Building unsigned Release app for SideStore as build ${BUILD_NUMBER}..."
           xcodebuild \
             -project MeteoblueWeather.xcodeproj \
             -scheme MeteoblueWeather \
@@ -206,6 +207,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY='' \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             clean build
 
           APP="$DERIVED/Build/Products/Release-iphoneos/MeteoblueWeather.app"
@@ -242,6 +244,7 @@ jobs:
           fi
 
           python3 - "$APP" <<'PY'
+          import os
           import pathlib
           import plistlib
           import sys
@@ -271,6 +274,12 @@ jobs:
                   raise SystemExit(
                       f"Host/widget {key} mismatch: host={host_value!r}, widget={widget_value!r}"
                   )
+
+          expected_build = os.environ["BUILD_NUMBER"]
+          if host_info.get("CFBundleVersion") != expected_build:
+              raise SystemExit(
+                  f"Unexpected SideStore build number: {host_info.get('CFBundleVersion')!r} != {expected_build!r}"
+              )
 
           assets = app / "Assets.car"
           if not assets.is_file() or assets.stat().st_size == 0:
