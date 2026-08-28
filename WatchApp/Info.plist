@@ -40,6 +40,6 @@
     <key>WKCompanionAppBundleIdentifier</key>
     <string>com.arthurtrovato.MeteoblueWidget</string>
     <key>WKRunsIndependentlyOfCompanionApp</key>
-    <false/>
+    <true/>
 </dict>
 </plist>
