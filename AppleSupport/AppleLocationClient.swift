@@ -34,7 +34,13 @@ final class AppleLocationClient: NSObject, CLLocationManagerDelegate {
     }
 
     var authorizationStatus: CLAuthorizationStatus { manager.authorizationStatus }
-    var isAuthorizedForWidgetUpdates: Bool { manager.isAuthorizedForWidgetUpdates }
+    var isAuthorizedForWidgetUpdates: Bool {
+#if os(watchOS)
+        manager.authorizationStatus.allowsForegroundLocation
+#else
+        manager.isAuthorizedForWidgetUpdates
+#endif
+    }
 
     func requestWhenInUseAuthorization() async -> CLAuthorizationStatus {
         let current = manager.authorizationStatus
