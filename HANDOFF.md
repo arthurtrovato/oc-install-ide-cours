@@ -195,3 +195,16 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 - Physical Watch result: not yet performed; Mac, Wi-Fi, iPhone and Watch are now available.
 - Exact next action: give Codex the mission in `CODEX_WATCH_MISSION.md` and let it execute the Xcode deployment until success or the first unavoidable user-only interaction.
 - Resume prompt for a new ChatGPT conversation: `Continue le projet Meteoblue dans arthurtrovato/oc-install-ide-cours sur meteoblue-widget. Lis HANDOFF.md et CODEX_WATCH_MISSION.md. Reprends depuis le dernier résultat physique Codex/Xcode, préserve le tap complication vers Apple Weather et mets HANDOFF.md à jour avant de terminer.`
+
+### Codex execution status — 2026-08-28 21:25 CEST
+
+- Local clone used: `/Users/Arthur/Documents/Codex/2026-08-25/fai/work/oc-install-ide-cours`. Branch: `meteoblue-widget`.
+- Device state: Xcode recognizes the paired Apple Watch Series 9 as a physical watchOS destination; watchOS `26.6`, Developer Mode enabled, DDI services available. The paired iPhone is also visible to Xcode.
+- Signing: the Apple Account is present in Xcode. The local physical-device build used the free Personal Team through a command-line build setting; no team identifier or account data was added to tracked files.
+- Build: `MeteoblueWatch` plus `MeteoblueWatchWidgetExtension` built successfully for the physical Watch with automatic provisioning. The generated Xcode project, DerivedData, profiles and local `Config/Secrets.xcconfig` remain outside Git.
+- Installation: the signed Watch app was installed successfully on the physical Watch. `devicectl` confirms the installed app as `Meteoblue`, version `1.0.3`, build `7`.
+- Launch: `devicectl` launched the Watch app successfully on the physical Watch.
+- Physical runtime result: installation and launch are confirmed. Location permission, first real Meteoblue timeline, complication placement/display and tap-to-Apple-Weather are still awaiting direct visual confirmation on the Watch; no runtime error was observed from the deployment commands.
+- Tracked files modified this step: this handoff only. No source code or bundle IDs changed. No secret was displayed, copied to logs, or committed.
+- CI: no new CI run was triggered by this local-only signing/install step; the last recorded Watch and iOS CI runs remain successful.
+- Exact next action: on the Apple Watch, open Meteoblue and tap `Autoriser la localisation` if that button is shown; then report only that the action is finished so the complication timeline can be validated.
