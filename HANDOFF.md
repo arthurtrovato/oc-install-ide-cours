@@ -1,62 +1,49 @@
 # Meteoblue Widget — ChatGPT Handoff
 
-> **MANDATORY SESSION RULE**
+> **MANDATORY CONTINUITY RULE**
 >
-> Any ChatGPT session working on branch `meteoblue-widget` must read this file before making project changes and must update this file **before ending every substantive project turn**. Record branch head, functional checkpoint, CI, physical-device results, blockers and exact next action.
+> Any ChatGPT or Codex session working on branch `meteoblue-widget` must read this file before changing the project and must update it before ending every substantive turn. Record the current branch state, latest functional commit, CI, physical-device results, exact blockers and the next executable action.
 
-## Guardrails
+## Repository guardrails
 
 - Repository: `arthurtrovato/oc-install-ide-cours`
-- Work only on **`meteoblue-widget`**.
-- Do not modify `master` or `ProjetLedor`.
-- Latest functional checkpoint entering this handoff update: **`47ac307914f910dfff7792da8dee4b8d1f91174d`** (`watch: add guided local install preparation script`).
-- Handoff-only commits are bookkeeping and should not be confused with the latest functional checkpoint.
+- Work only on branch **`meteoblue-widget`**.
+- Never modify `master`.
+- Never modify `ProjetLedor`.
+- Do not discard uncommitted user work in a local clone; use a clean clone/worktree if needed.
+- Latest functional checkpoint: **`47ac307914f910dfff7792da8dee4b8d1f91174d`** (`watch: add guided local install preparation script`).
+- Parent branch HEAD before the Codex mission document was added: **`344ec5e8503c1917f493c8962697bd1049a39142`**.
+- Commits that only change documentation or this handoff are bookkeeping, not new runtime checkpoints.
 
 ## Product goal
 
-Native SwiftUI iPhone app + dense WidgetKit widget using meteoblue only, plus an Apple Watch app and rectangular complication. Preserve automatic location, cache/offline behavior, movement handling and existing weather architecture.
+Build and validate a native SwiftUI iPhone app with a dense WidgetKit widget using meteoblue data, plus an Apple Watch app and rectangular complication. Preserve automatic location, cache/offline behavior, movement handling and the existing meteoblue-only weather architecture.
 
-## iPhone — physically validated state
+## User decisions that must be preserved
 
-SideStore successfully installs the iPhone app + iPhone widget package. The app launches, custom icon appears, widget is available and displays real meteoblue weather. `Keep App Extensions (Use Main Profile)` is the validated SideStore choice.
+1. **Apple Watch complication data comes from meteoblue.**
+2. **Tapping the Apple Watch complication must intentionally open Apple Weather on the Apple Watch.** This is desired behavior, not a bug.
+3. Do not re-add Watch bundles to the SideStore IPA; that combined package made SideStore crash.
+4. Do not upload future IPA files to Google Drive. Provide them directly through ChatGPT/sandbox when required.
+5. Update `HANDOFF.md` before ending every substantive project turn.
 
-### Widget tap behavior — latest physical result
-
-Build **1.0.3 (95.1)** has now been physically installed successfully on the user's iPhone after Wi-Fi became available. The diagnostics screen showed:
-
-- version `1.0.3 (95.1)`;
-- locality `Tressange`;
-- fresh cache/no latest error;
-- deep-link diagnostic: `Prévision meteoblue ouverte sur le web`.
-
-Physical test result on 2026-08-28: **tapping the iPhone widget still opens the canonical meteoblue forecast in Safari, not the official meteoblue app**.
-
-This means the earlier SideStore `Minimuxer.MinimuxerError 27 / AFC was unable to manage files on the device` was transient/environmental and is no longer the current blocker. The canonical place-slug URL approach did not cause the official meteoblue app to claim the link on this physical device.
-
-Known investigation already completed:
-
-- meteoblue publishes Apple App Site Association data;
-- current official app bundle identified as `com.meteoblue.meteoblue-weather`;
-- `/meteo/semaine/` paths are associated;
-- older coordinate URL and newer canonical place-slug URL both physically fall back to Safari;
-- Notes/Safari did not provide an Open-in-meteoblue route in prior tests;
-- no documented/public `meteoblue://` custom scheme was found.
-
-Do not block the Watch work on this. Revisit the iPhone deep-link track separately only if a new viable route is found.
-
-## User distribution preference
-
-Do not upload IPA files to Google Drive. If another IPA must be tested, provide it directly through ChatGPT/sandbox.
-
-## Apple Watch — required behavior
-
-**Do not change this user decision:** tapping the complication must intentionally open **Apple Weather on the Apple Watch**, while the complication itself displays meteoblue data.
-
-Intended chain:
+Intended Watch tap chain:
 
 `complication -> meteobluewatch://apple-weather -> Meteoblue Watch relay -> weather:// -> Apple Weather`
 
-## Apple Watch implementation
+## iPhone state — physically validated
+
+- SideStore installs the iPhone app + iPhone widget package.
+- The app launches, the custom icon appears, the large widget is available and displays real meteoblue weather.
+- SideStore choice validated: **Keep App Extensions (Use Main Profile)**.
+- Build **1.0.3 (95.1)** is installed on the physical iPhone.
+- Diagnostics showed locality `Tressange`, fresh cache and no current API error.
+- Physical result: tapping the widget still opens the canonical meteoblue forecast in Safari, not the official meteoblue app.
+- The previous `Minimuxer.MinimuxerError 27 / AFC was unable to manage files on the device` disappeared once Wi-Fi was available; it is no longer the blocker.
+- Both the older coordinate URL and the canonical place-slug URL fall back to Safari. Notes/Safari did not expose an Open-in-meteoblue path, and no documented public `meteoblue://` scheme was found.
+- Do not block Watch deployment on the unresolved iPhone deep-link behavior.
+
+## Apple Watch implementation state
 
 Targets:
 
@@ -64,9 +51,17 @@ Targets:
 - `MeteoblueWatchWidgetExtension`
 - complication family `.accessoryRectangular`
 
-Watch functionality includes Watch-side location authorization, network/cache/timeline using `WidgetWeatherCoordinator(namespace: "watch-widget")`, meteoblue current/min/max/precipitation/five upcoming hours, and Watch app icon assets.
+Implemented:
 
-The Watch app is configured as independent of the iPhone companion with `WKRunsIndependentlyOfCompanionApp = true`.
+- independent Watch app (`WKRunsIndependentlyOfCompanionApp = true`);
+- Watch-side location permission;
+- Watch-side meteoblue requests, cache and timeline using `WidgetWeatherCoordinator(namespace: "watch-widget")`;
+- current temperature, daily min/max, precipitation and five upcoming hours;
+- Watch app icon assets;
+- complication tap relay to Apple Weather;
+- structural Watch bundle validation;
+- physical-device-SDK CI build for `generic/platform=watchOS`;
+- separate Xcode + Personal Team deployment route.
 
 Important files:
 
@@ -78,104 +73,93 @@ Important files:
 - `WATCH_INSTALL.md`
 - `Scripts/validate_watch_bundle.py`
 - `Scripts/prepare_watch_install.sh`
+- `CODEX_WATCH_MISSION.md`
 
-## Watch distribution architecture
+## Watch deployment architecture
 
-Do **not** re-add Watch bundles to the SideStore IPA. A combined iPhone + widget + Watch + complication IPA made SideStore crash after import, while the iPhone + widget IPA installs correctly.
+The Watch route is deliberately separate from SideStore:
 
-The Watch route is deliberately separate: **Xcode + Personal Team on the user's Mac**.
+- SideStore transport IPA: iPhone app + iPhone widget only.
+- Watch app + complication: deploy from the user's Mac using Xcode and a free Personal Team.
 
-Completed Watch deployment work:
+Completed deployment work:
 
 - `1b275fa` — independent Watch deployment flag;
-- `97a8b3a` — structural Watch bundle validator;
-- `65e582e` — dedicated Watch CI including `generic/platform=watchOS` physical-device SDK build;
-- `c966f9f` — `WATCH_INSTALL.md` physical installation guide;
+- `97a8b3a` — Watch bundle validator;
+- `65e582e` — dedicated Watch CI;
+- `c966f9f` — physical installation guide;
 - `754f5f9` — Watch AppIcon assets;
-- `47ac307` — `Scripts/prepare_watch_install.sh`, a guided local preparation script.
+- `47ac307` — guided local preparation script.
 
-The preparation script:
-
-- requires macOS/Xcode;
-- verifies branch `meteoblue-widget` when inside a Git clone;
-- installs XcodeGen through Homebrew when available and needed;
-- creates `Config/Secrets.xcconfig` from the example when missing;
-- asks for the meteoblue API key silently if not configured;
-- verifies the secret file is ignored by Git;
-- runs `xcodegen generate`;
-- verifies the `MeteoblueWatch` scheme;
-- prints the destinations Xcode sees;
-- opens `MeteoblueWeather.xcodeproj`.
+`Scripts/prepare_watch_install.sh` verifies macOS/Xcode/branch, installs XcodeGen through Homebrew when appropriate, prepares the ignored local API-key config, generates the Xcode project, verifies the `MeteoblueWatch` scheme, prints visible Watch destinations and opens Xcode.
 
 ## CI state
 
-Previously validated functional Watch state:
+For branch HEAD `344ec5e`:
 
-- Watch CI `33195073438`: **success**, including `generic/platform=watchOS` physical-device build, bundle validator and simulator build.
-- iOS CI `33195073470`: **success**, including Swift tests, live meteoblue integration, iPhone app/widget and Watch app/complication builds.
+- Watch CI run **`33197060526` — SUCCESS**.
+- iOS CI run **`33197060534` — SUCCESS**.
 
-After commit `47ac307`, new push CI runs were triggered on 2026-08-28; at the time of this handoff update the new Watch CI run `33197005675` was still `in_progress`. The new commit only adds a local preparation shell script and does not alter Watch runtime code.
+Earlier runtime-validating Watch CI:
 
-## Current project configuration / decisions not to revert
+- Watch CI `33195073438` — success, including `generic/platform=watchOS`, bundle validator and simulator build.
+- iOS CI `33195073470` — success, including Swift tests, live meteoblue integration, iPhone app/widget and Watch app/complication builds.
 
-- marketing version `1.0.3`;
-- iOS minimum 17.0;
-- watchOS minimum 10.0;
-- Watch AppIcon enabled;
-- weather values only from meteoblue;
-- production packages `basic-1h_basic-day`;
-- `current` package intentionally not required after real HTTP 403 probe;
-- current conditions derived from nearest basic-1h row;
-- cache fresh ~75 min, up to 8 zones;
-- movement threshold 20 km;
-- max location age 6 h;
-- max accepted horizontal uncertainty 5 km;
-- stale matching data/old-zone fallback intentionally supported;
-- no WeatherKit and no App Group dependency.
+## Current user/device availability
 
-Bundle IDs:
+The user now has:
 
-- `com.arthurtrovato.MeteoblueWidget`
-- `com.arthurtrovato.MeteoblueWidget.Widget`
-- `com.arthurtrovato.MeteoblueWidget.watchkitapp`
-- `com.arthurtrovato.MeteoblueWidget.watchkitapp.Widget`
+- Wi-Fi;
+- the Mac;
+- the paired iPhone;
+- the Apple Watch.
+
+Physical Watch installation and runtime validation can proceed now.
+
+## Codex Computer Use handoff
+
+A self-contained execution brief has been added at **`CODEX_WATCH_MISSION.md`**. It tells Codex on the Mac to use Computer Use plus Terminal/Xcode, perform the work rather than merely explain it, request only unavoidable secret/physical interactions one at a time, install the Watch app, validate the complication and update this handoff before stopping.
+
+The user can give Codex the contents of that document, or simply tell Codex to open and execute it from the repository.
+
+## Immediate next action
+
+On the Mac, Codex should:
+
+1. locate or create a clean local clone;
+2. update `meteoblue-widget`;
+3. read `HANDOFF.md`, `WATCH_INSTALL.md` and `CODEX_WATCH_MISSION.md`;
+4. run `./Scripts/prepare_watch_install.sh`;
+5. configure Personal Team signing for `MeteoblueWatch` and `MeteoblueWatchWidgetExtension`;
+6. pair/select the physical Apple Watch in Xcode;
+7. install and launch;
+8. validate location, real meteoblue data, rectangular complication and tap-to-Apple-Weather behavior;
+9. minimally fix actual Xcode/runtime blockers, test, commit, push and verify CI;
+10. update `HANDOFF.md` with the exact physical result.
+
+Do not change Watch code pre-emptively for a pairing/signing issue. Capture the first real Xcode error and fix the correct layer.
+
+## Security rules for local execution
+
+- Never commit `Config/Secrets.xcconfig`, DerivedData, archives, provisioning profiles or credentials.
+- Never expose the meteoblue key, Apple password, 2FA code, Mac password or device passcode in logs or chat.
+- Pause for the user only when Apple/macOS requires a secret, trust confirmation, Developer Mode or a physical Watch/iPhone gesture.
+- Use the free Personal Team; do not purchase paid Apple resources.
 
 ## GitHub connector pitfalls
 
-- High-level `delete_file` has repeatedly stalled; for deletions use low-level Git Data (`create_tree` with `sha:null` -> `create_commit` -> `update_ref` -> verify 404).
-- A prior high-level `create_file` was blocked by risk classification; low-level `create_blob` -> `create_tree` -> `create_commit` -> `update_ref` succeeded.
-- If a wrapper stalls or is blocked, do not repeatedly retry it.
-
-## Immediate next action — NOW
-
-The user currently has **Wi-Fi, Mac and Apple Watch available**. Proceed with physical Watch installation now.
-
-On the Mac, from a local clone of this repository:
-
-```sh
-git fetch origin
-git switch meteoblue-widget
-git pull --ff-only origin meteoblue-widget
-./Scripts/prepare_watch_install.sh
-```
-
-Then in Xcode:
-
-1. choose the user's Personal Team for `MeteoblueWatch` and `MeteoblueWatchWidgetExtension` under Signing & Capabilities;
-2. pair/select the physical Apple Watch as the destination for scheme `MeteoblueWatch`;
-3. press Run;
-4. report the exact first blocking message if Xcode does not install;
-5. if it installs, open Meteoblue on the Watch, grant location, add `Meteoblue 5 h` to a rectangular complication slot, verify real meteoblue data and verify tap opens Apple Weather.
-
-Do not change Watch code pre-emptively in response to a signing/pairing issue; capture the exact Xcode error first.
+- High-level `delete_file` has repeatedly stalled; use low-level Git Data deletion (`create_tree` with `sha:null` -> `create_commit` -> `update_ref` -> verify absence).
+- A prior high-level `create_file` was blocked by risk classification; low-level blob/tree/commit/ref writes worked.
+- If a wrapper stalls or is blocked, switch strategy instead of repeatedly retrying it.
 
 ## Last handoff update
 
-- Date: 2026-08-28 around 19:55 Europe/Paris.
-- Latest functional commit: `47ac307914f910dfff7792da8dee4b8d1f91174d`.
-- New file this turn: `Scripts/prepare_watch_install.sh`.
-- Physical iPhone result: build `1.0.3 (95.1)` installed successfully with Wi-Fi; widget still opens Safari rather than official meteoblue app.
-- New blocker status: iPhone SideStore AFC error cleared; iPhone app-claim deep link remains unsuccessful but is not blocking Watch track.
-- Physical Watch test: not started yet; user now has Mac + Watch ready.
-- Exact next action: run the four shell commands in the Immediate next action section, then continue from the first Xcode result.
-- Resume prompt if conversation changes: `Continue le projet Meteoblue depuis HANDOFF.md. Le test physique iPhone 95.1 ouvre toujours Safari. Le Mac et l’Apple Watch sont disponibles. Reprends l’installation Watch depuis Scripts/prepare_watch_install.sh et corrige le premier blocage Xcode réel, puis mets HANDOFF.md à jour.`
+- Date: 2026-08-28, Europe/Paris.
+- Work performed this turn: created a self-contained Codex Computer Use mission for physical Apple Watch deployment and validation.
+- New documentation file: `CODEX_WATCH_MISSION.md`.
+- Latest functional runtime commit remains `47ac307914f910dfff7792da8dee4b8d1f91174d`.
+- Latest confirmed CI before this documentation update: Watch `33197060526` success; iOS `33197060534` success.
+- Physical iPhone result remains: build 95.1 works, widget tap opens Safari.
+- Physical Watch result: not yet performed; Mac, Wi-Fi, iPhone and Watch are now available.
+- Exact next action: give Codex the mission in `CODEX_WATCH_MISSION.md` and let it execute the Xcode deployment until success or the first unavoidable user-only interaction.
+- Resume prompt for a new ChatGPT conversation: `Continue le projet Meteoblue dans arthurtrovato/oc-install-ide-cours sur meteoblue-widget. Lis HANDOFF.md et CODEX_WATCH_MISSION.md. Reprends depuis le dernier résultat physique Codex/Xcode, préserve le tap complication vers Apple Weather et mets HANDOFF.md à jour avant de terminer.`
