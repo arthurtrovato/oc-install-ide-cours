@@ -84,7 +84,22 @@ jobs:
 
           if [ "$status" -ne 0 ]; then
             echo "::group::Exact xcodebuild error lines"
-            grep -n -E 'fatal error:|error:' "$LOG" || echo "No literal error: line was found in the captured xcodebuild output."
+            errors="$(grep -n -E 'fatal error:|error:' "$LOG" || true)"
+            if [ -n "$errors" ]; then
+              printf '%s\n' "$errors"
+              while IFS= read -r line; do
+                echo "::error::$line"
+              done <<< "$errors"
+            else
+              errors="xcodebuild failed with status $status but no literal compiler error line was found."
+              echo "::error::$errors"
+            fi
+            {
+              echo "### Exact xcodebuild error lines"
+              echo '```text'
+              printf '%s\n' "$errors"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
             echo "::endgroup::"
             exit "$status"
           fi
