@@ -35,10 +35,10 @@
     <string>$(METEOBLUE_API_KEY)</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>La localisation permet d’afficher la météo de votre position dans la complication Meteoblue.</string>
+    <key>WKApplication</key>
+    <true/>
     <key>WKCompanionAppBundleIdentifier</key>
     <string>com.arthurtrovato.MeteoblueWidget</string>
-    <key>WKWatchKitApp</key>
-    <true/>
     <key>WKRunsIndependentlyOfCompanionApp</key>
     <false/>
 </dict>
