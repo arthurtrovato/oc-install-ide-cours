@@ -168,6 +168,15 @@ Do not change Watch code pre-emptively for a pairing/signing issue. Capture the 
 - CI: no new run triggered yet; the previously recorded Watch and iOS CI results remain unchanged.
 - Exact next action: connect the paired iPhone companion to this Mac with a USB cable and leave it unlocked so Xcode can begin pairing; then continue with trust, signing, Watch installation and runtime validation one gate at a time.
 
+### Codex execution status — 2026-08-28 20:43 CEST
+
+- Xcode Device Hub now sees both paired physical devices: `Yes` — iPhone 16e, iOS `26.6.1` (Developer Mode enabled), and `Apple Watch d’Arthur` — Apple Watch Series 9, watchOS `26.6`.
+- The iPhone is paired over the wired connection and its shared cache symbols finished copying. The Watch is paired over the local network; its hardware is `arm64e` and its pairing state is `paired`.
+- Exact current blocker: `xcrun devicectl device info details` reports `Developer Mode is disabled` on the Watch and `ddiServicesAvailable: false`. Xcode lists the Watch as ineligible with `Apple Watch d’Arthur doesn’t have a known architecture` until the developer services are enabled.
+- No source-code or project configuration change was made. The only tracked change remains this handoff documentation; generated project files and local secrets remain ignored.
+- Installation/app/complication/tap result: still not physically tested because Xcode cannot deploy to the Watch while Developer Mode is disabled.
+- Exact next action: on the Apple Watch, open `Settings > Privacy & Security > Developer Mode`, enable it, and accept the restart/confirmation requested by watchOS; then resume Xcode deployment.
+
 - Date: 2026-08-28, Europe/Paris.
 - Work performed this turn: created a self-contained Codex Computer Use mission for physical Apple Watch deployment and validation.
 - New documentation file: `CODEX_WATCH_MISSION.md`.
