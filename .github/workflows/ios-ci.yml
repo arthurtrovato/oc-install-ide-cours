@@ -1,6 +1,6 @@
 name: iOS CI
 
-# Normal pushes validate iPhone + Watch targets and the private SideStore package path. A manual run also uploads the iPhone IPA.
+# Pushes validate the iPhone, widget and Watch targets. Manual runs additionally build and upload the keyed SideStore IPA.
 on:
   push:
     branches: [meteoblue-widget]
@@ -146,13 +146,13 @@ jobs:
           fi
 
       - name: Generate SideStore embedded credential
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/meteoblue-widget'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
         env:
           METEOBLUE_API_KEY: ${{ secrets.METEOBLUE_API_KEY }}
         run: |
           set -euo pipefail
           if [ -z "${METEOBLUE_API_KEY:-}" ]; then
-            echo "::error::METEOBLUE_API_KEY is required to validate/package the SideStore IPA."
+            echo "::error::METEOBLUE_API_KEY is required to package the SideStore IPA."
             exit 1
           fi
           python3 - <<'PY'
@@ -186,7 +186,7 @@ jobs:
           echo "Generated the runner-only credential source without printing the key."
 
       - name: Build unsigned SideStore IPA
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/meteoblue-widget'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
         env:
           METEOBLUE_API_KEY: ${{ secrets.METEOBLUE_API_KEY }}
         run: |
@@ -224,7 +224,6 @@ jobs:
           fi
 
           echo "Checking that the Meteoblue key is not present as plaintext..."
-          # The key must not survive as a plaintext string anywhere in the packaged iPhone app.
           python3 - "$APP" <<'PY'
           import os
           import pathlib
@@ -253,7 +252,7 @@ jobs:
           echo "Unsigned IPA packaged for SideStore re-signing."
 
       - name: Upload SideStore build log
-        if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/meteoblue-widget'
+        if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/meteoblue-widget'
         uses: actions/upload-artifact@v4
         with:
           name: meteoblue-sidestore-build-${{ github.run_id }}
