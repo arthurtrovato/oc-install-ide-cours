@@ -18,6 +18,32 @@ final class MeteoblueLinkAndEndpointTests: XCTestCase {
         XCTAssertTrue(MeteoblueForecastLinkBuilder.isAllowedMeteoblueURL(url))
     }
 
+    func testCanonicalFrenchURLUsesMeteoblueLocationSlug() {
+        let url = MeteoblueForecastLinkBuilder.canonicalWebURL(slug: "tressange_france_2971777")
+        XCTAssertEqual(url?.absoluteString, "https://www.meteoblue.com/fr/meteo/semaine/tressange_france_2971777")
+        XCTAssertTrue(url.map(MeteoblueForecastLinkBuilder.isAllowedMeteoblueURL) ?? false)
+        XCTAssertNil(MeteoblueForecastLinkBuilder.canonicalWebURL(slug: "../evil"))
+    }
+
+    func testLocationSearchResolverUsesNearestCanonicalSlug() async throws {
+        let json = #"{"results":[{"url":"aumetz_france_3036107","distance":0.97},{"url":"tressange_france_2971777","distance":2.38}]}"#
+        let resolver = MeteoblueLocationSearchResolver(
+            httpClient: StubHTTPClient(result: .success(.init(data: Data(json.utf8), statusCode: 200)))
+        )
+        let url = await resolver.canonicalForecastURL(for: location, apiKey: "TEST_KEY", language: "fr")
+        XCTAssertEqual(url?.absoluteString, "https://www.meteoblue.com/fr/meteo/semaine/aumetz_france_3036107")
+    }
+
+    func testLocationSearchResolverRejectsDistantCandidate() async throws {
+        let json = #"{"results":[{"url":"paris_france_2988507","distance":250.0}]}"#
+        let resolver = MeteoblueLocationSearchResolver(
+            httpClient: StubHTTPClient(result: .success(.init(data: Data(json.utf8), statusCode: 200))),
+            maximumDistanceKilometers: 20
+        )
+        let url = await resolver.canonicalForecastURL(for: location, apiKey: "TEST_KEY", language: "fr")
+        XCTAssertNil(url)
+    }
+
     func testRelayRoundTripPreservesDisplayedPlaceURL() throws {
         let target = try MeteoblueForecastLinkBuilder.webURL(for: location)
         let relay = try MeteoblueForecastLinkBuilder.relayURL(for: target)
