@@ -29,6 +29,8 @@ public enum MeteoblueTransformer {
 
         return WeatherSnapshot(
             fetchedAt: fetchedAt,
+            modelRunUTC: payload.metadata.modelRunUTC,
+            modelRunUpdateUTC: payload.metadata.modelRunUpdateUTC,
             location: location,
             current: current,
             hourly: hourly,

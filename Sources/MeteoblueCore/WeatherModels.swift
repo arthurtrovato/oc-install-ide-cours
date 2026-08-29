@@ -135,6 +135,8 @@ public struct DailyForecast: Codable, Equatable, Sendable {
 
 public struct WeatherSnapshot: Codable, Equatable, Sendable {
     public let fetchedAt: Date
+    public let modelRunUTC: String?
+    public let modelRunUpdateUTC: String?
     public let location: WeatherLocation
     public let current: CurrentConditions
     public let hourly: [HourlyForecast]
@@ -143,6 +145,8 @@ public struct WeatherSnapshot: Codable, Equatable, Sendable {
 
     public init(
         fetchedAt: Date,
+        modelRunUTC: String? = nil,
+        modelRunUpdateUTC: String? = nil,
         location: WeatherLocation,
         current: CurrentConditions,
         hourly: [HourlyForecast],
@@ -150,11 +154,19 @@ public struct WeatherSnapshot: Codable, Equatable, Sendable {
         meteoblueURL: URL
     ) {
         self.fetchedAt = fetchedAt
+        self.modelRunUTC = modelRunUTC
+        self.modelRunUpdateUTC = modelRunUpdateUTC
         self.location = location
         self.current = current
         self.hourly = hourly.sorted { $0.date < $1.date }
         self.daily = daily.sorted { $0.date < $1.date }
         self.meteoblueURL = meteoblueURL
+    }
+
+    public var forecastRunIdentifier: String? {
+        if let modelRunUpdateUTC, !modelRunUpdateUTC.isEmpty { return modelRunUpdateUTC }
+        if let modelRunUTC, !modelRunUTC.isEmpty { return modelRunUTC }
+        return nil
     }
 
     public func freshness(at date: Date, freshInterval: TimeInterval = 75 * 60, veryStaleInterval: TimeInterval = 6 * 60 * 60) -> WeatherFreshness {

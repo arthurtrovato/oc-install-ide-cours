@@ -9,6 +9,9 @@ public struct DiagnosticsSnapshot: Codable, Equatable, Sendable {
     public var locationAgeSeconds: TimeInterval?
     public var displayedLocality: String?
     public var lastMeteoblueCall: Date?
+    public var forecastFetchedAt: Date?
+    public var forecastModelRunUTC: String?
+    public var forecastModelRunUpdateUTC: String?
     public var cacheAgeSeconds: TimeInterval?
     public var nextRequestedRefresh: Date?
     public var lastError: String?
@@ -25,6 +28,9 @@ public struct DiagnosticsSnapshot: Codable, Equatable, Sendable {
         locationAgeSeconds: TimeInterval? = nil,
         displayedLocality: String? = nil,
         lastMeteoblueCall: Date? = nil,
+        forecastFetchedAt: Date? = nil,
+        forecastModelRunUTC: String? = nil,
+        forecastModelRunUpdateUTC: String? = nil,
         cacheAgeSeconds: TimeInterval? = nil,
         nextRequestedRefresh: Date? = nil,
         lastError: String? = nil,
@@ -40,6 +46,9 @@ public struct DiagnosticsSnapshot: Codable, Equatable, Sendable {
         self.locationAgeSeconds = locationAgeSeconds
         self.displayedLocality = displayedLocality
         self.lastMeteoblueCall = lastMeteoblueCall
+        self.forecastFetchedAt = forecastFetchedAt
+        self.forecastModelRunUTC = forecastModelRunUTC
+        self.forecastModelRunUpdateUTC = forecastModelRunUpdateUTC
         self.cacheAgeSeconds = cacheAgeSeconds
         self.nextRequestedRefresh = nextRequestedRefresh
         self.lastError = lastError
@@ -58,6 +67,8 @@ public struct DiagnosticsSnapshot: Codable, Equatable, Sendable {
             "widget_location_authorized=\(widgetLocationAuthorized)",
             "locality=\(displayedLocality ?? "none")",
             "cache_source=\(cacheSource?.rawValue ?? "none")",
+            "modelrun_utc=\(forecastModelRunUTC ?? "none")",
+            "modelrun_updatetime_utc=\(forecastModelRunUpdateUTC ?? "none")",
             "deep_link=\(deepLinkState)"
         ]
         if let coordinate = lastCoordinate {
@@ -66,6 +77,7 @@ public struct DiagnosticsSnapshot: Codable, Equatable, Sendable {
         if let accuracy = locationAccuracyMeters { lines.append(String(format: "accuracy_m=%.0f", accuracy)) }
         if let age = locationAgeSeconds { lines.append(String(format: "location_age_s=%.0f", age)) }
         if let call = lastMeteoblueCall { lines.append("last_meteoblue_call=\(iso.string(from: call))") }
+        if let fetched = forecastFetchedAt { lines.append("forecast_fetched_at=\(iso.string(from: fetched))") }
         if let age = cacheAgeSeconds { lines.append(String(format: "cache_age_s=%.0f", age)) }
         if let next = nextRequestedRefresh { lines.append("next_requested_refresh=\(iso.string(from: next))") }
         if let error = lastError { lines.append("last_error=\(error)") }

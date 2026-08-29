@@ -15,8 +15,28 @@ final class MeteoblueDecodingTests: XCTestCase {
         let payload = try MeteobluePayloadDecoder.decode(fixtureData("meteoblue-realistic"))
         XCTAssertEqual(payload.metadata.latitude, 49.402)
         XCTAssertEqual(payload.metadata.timeZoneIdentifier, "Europe/Paris")
+        XCTAssertEqual(payload.metadata.modelRunUTC, "2026-08-25 06:00")
         XCTAssertEqual(payload.hourly?.time.count, 12)
         XCTAssertEqual(payload.daily?.time.count, 7)
+    }
+
+    func testModelRunMetadataIsPreservedInSnapshot() throws {
+        let snapshot = try makeSnapshot("meteoblue-realistic")
+        XCTAssertEqual(snapshot.modelRunUTC, "2026-08-25 06:00")
+        XCTAssertEqual(snapshot.forecastRunIdentifier, "2026-08-25 06:00")
+    }
+
+    func testModelRunUpdateAliasIsDecoded() throws {
+        let data = Data("{\"metadata\":{\"modelrun_utc\":\"2026-08-25 06:00\",\"modelrun_updatetime_utc\":\"2026-08-25 07:12\"},\"data_1h\":{\"time\":[\"2026-08-25 10:00\"],\"temperature\":[14]},\"data_day\":{\"time\":[\"2026-08-25\"],\"temperature_min\":[10],\"temperature_max\":[18]}}".utf8)
+        let payload = try MeteobluePayloadDecoder.decode(data)
+        let snapshot = try MeteoblueTransformer.makeSnapshot(
+            payload: payload,
+            requestedLocation: location,
+            fetchedAt: fetchedAt,
+            meteoblueURL: try MeteoblueForecastLinkBuilder.webURL(for: location)
+        )
+        XCTAssertEqual(snapshot.modelRunUpdateUTC, "2026-08-25 07:12")
+        XCTAssertEqual(snapshot.forecastRunIdentifier, "2026-08-25 07:12")
     }
 
     func testCurrentDataIsDecodedAndTransformed() throws {

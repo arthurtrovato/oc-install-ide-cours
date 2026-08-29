@@ -7,14 +7,24 @@ public struct MeteoblueMetadata: Equatable, Sendable {
     public let timeZoneIdentifier: String?
     public let utcOffsetHours: Double?
     public let modelRunUTC: String?
+    public let modelRunUpdateUTC: String?
 
-    public init(latitude: Double?, longitude: Double?, heightMeters: Double?, timeZoneIdentifier: String?, utcOffsetHours: Double?, modelRunUTC: String?) {
+    public init(
+        latitude: Double?,
+        longitude: Double?,
+        heightMeters: Double?,
+        timeZoneIdentifier: String?,
+        utcOffsetHours: Double?,
+        modelRunUTC: String?,
+        modelRunUpdateUTC: String? = nil
+    ) {
         self.latitude = latitude
         self.longitude = longitude
         self.heightMeters = heightMeters
         self.timeZoneIdentifier = timeZoneIdentifier
         self.utcOffsetHours = utcOffsetHours
         self.modelRunUTC = modelRunUTC
+        self.modelRunUpdateUTC = modelRunUpdateUTC
     }
 }
 
@@ -86,7 +96,8 @@ public enum MeteobluePayloadDecoder {
             heightMeters: double(metadataDictionary, keys: ["height", "asl", "elevation"]),
             timeZoneIdentifier: string(metadataDictionary, keys: ["timezone", "time_zone", "timezone_identifier"]),
             utcOffsetHours: double(metadataDictionary, keys: ["utc_timeoffset", "utc_offset", "timezone_offset"]),
-            modelRunUTC: string(metadataDictionary, keys: ["modelrun_utc", "model_run_utc"])
+            modelRunUTC: string(metadataDictionary, keys: ["modelrun_utc", "model_run_utc"]),
+            modelRunUpdateUTC: string(metadataDictionary, keys: ["modelrun_updatetime_utc", "model_run_updatetime_utc"])
         )
 
         let hourly = dictionary(root, keys: ["data_1h", "data_hourly", "hourly"]).map { block in

@@ -108,7 +108,10 @@ final class AppModel: ObservableObject {
             diagnostics.locationAccuracyMeters = selected.horizontalAccuracyMeters
             diagnostics.locationAgeSeconds = max(0, now.timeIntervalSince(selected.timestamp))
             diagnostics.displayedLocality = result.snapshot.location.locality
-            diagnostics.lastMeteoblueCall = result.source == .network ? now : result.snapshot.fetchedAt
+            diagnostics.lastMeteoblueCall = result.source == .network ? now : nil
+            diagnostics.forecastFetchedAt = result.snapshot.fetchedAt
+            diagnostics.forecastModelRunUTC = result.snapshot.modelRunUTC
+            diagnostics.forecastModelRunUpdateUTC = result.snapshot.modelRunUpdateUTC
             diagnostics.cacheAgeSeconds = max(0, now.timeIntervalSince(result.snapshot.fetchedAt))
             diagnostics.nextRequestedRefresh = timeline.requestedRefreshDate
             diagnostics.lastError = result.lastError
@@ -200,7 +203,8 @@ final class AppModel: ObservableObject {
         case .invalidCoordinate: return "Position invalide — dernière position valide utilisée."
         case .tooOld: return "Nouvelle position trop ancienne — dernière position valide utilisée."
         case .tooImprecise: return "Nouvelle position trop imprécise — dernière position valide utilisée."
-        case .insignificantMovement: return "Déplacement inférieur à 20 km — zone météo conservée."
+        case .insignificantMovement:
+            return "Déplacement sous le seuil météo hyperlocal — zone conservée."
         }
     }
 

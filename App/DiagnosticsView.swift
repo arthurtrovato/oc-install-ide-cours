@@ -16,7 +16,10 @@ struct DiagnosticsView: View {
             }
 
             Section("meteoblue / cache") {
-                row("Dernier appel", date(model.diagnostics.lastMeteoblueCall))
+                row("Dernier appel reseau", date(model.diagnostics.lastMeteoblueCall))
+                row("Snapshot recu", date(model.diagnostics.forecastFetchedAt))
+                row("Run modele UTC", model.diagnostics.forecastModelRunUTC ?? "-")
+                row("Run publie UTC", model.diagnostics.forecastModelRunUpdateUTC ?? "-")
                 row("Age cache", duration(model.diagnostics.cacheAgeSeconds))
                 row("Source", model.diagnostics.cacheSource?.rawValue ?? "-")
                 row("Prochaine demande", date(model.diagnostics.nextRequestedRefresh))
