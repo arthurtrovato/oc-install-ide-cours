@@ -304,3 +304,12 @@ Best case:
 - no repeated unnecessary network calls occur inside the same current 90-minute refresh window.
 
 If WidgetKit/watchOS scheduling causes different runs, record that explicitly. The current architecture is designed to minimize this without excessive API calls; perfect atomic cross-device equality would require a separate synchronization transport rather than a nonexistent shared local cache.
+
+### Codex execution status — 2026-08-29 13:39 CEST
+
+- The clean `meteoblue-widget` branch was fetched and fast-forwarded to `4e672c451b8b976b349feab3d7e44fd7beebc5d4`; `02db6a8` is its direct functional ancestor.
+- The local ignored Meteoblue configuration and Personal Team were accepted. The Watch app and complication from this HEAD built, signed, installed and launched successfully on the physical Apple Watch Series 9.
+- The validated iOS CI artifact from run `33249973310` was downloaded. Its SHA-256 was checked locally and its IPA contents contain the iPhone app plus iPhone widget only; no Watch bundle is present.
+- The iPhone is currently unavailable to CoreDevice, so the IPA has not yet been handed through the validated SideStore route and no `surface=widget` snapshot has been captured. The Watch has not yet been forced into a new diagnostic cycle.
+- No source code, SideStore package or secret file was changed. The current physical blocker is making the paired iPhone available to the Mac while unlocked.
+- Exact next action: unlock and connect the iPhone to the Mac, then install the prepared IPA through SideStore and start the filtered iPhone/Watch snapshot capture before one controlled refresh cycle.
