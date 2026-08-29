@@ -27,16 +27,18 @@ public enum LocationDecision: Equatable, Sendable {
 }
 
 public struct LocationPolicy: Sendable {
+    public static let defaultMovementThresholdKilometers = 2.0
+
     public let movementThresholdKilometers: Double
     public let maximumAge: TimeInterval
     public let maximumHorizontalAccuracyMeters: Double
 
     public init(
-        movementThresholdKilometers: Double = 20,
+        movementThresholdKilometers: Double = LocationPolicy.defaultMovementThresholdKilometers,
         maximumAge: TimeInterval = 6 * 60 * 60,
         maximumHorizontalAccuracyMeters: Double = 5_000
     ) {
-        self.movementThresholdKilometers = movementThresholdKilometers
+        self.movementThresholdKilometers = max(0.1, movementThresholdKilometers)
         self.maximumAge = maximumAge
         self.maximumHorizontalAccuracyMeters = maximumHorizontalAccuracyMeters
     }
@@ -60,7 +62,11 @@ public struct LocationPolicy: Sendable {
         guard let previous else { return .accept(candidate, distanceKilometers: nil) }
 
         let distance = previous.coordinate.distanceKilometers(to: candidate.coordinate)
-        if distance < movementThresholdKilometers {
+        // Do not let coarse GPS noise trigger a hyperlocal weather-zone change. Precise
+        // fixes can move after 2 km, while a coarse fix must exceed its own uncertainty.
+        let uncertaintyKilometers = max(previous.horizontalAccuracyMeters, candidate.horizontalAccuracyMeters) / 1_000
+        let effectiveThreshold = max(movementThresholdKilometers, uncertaintyKilometers)
+        if distance < effectiveThreshold {
             return .retain(previous, .insignificantMovement)
         }
         return .accept(candidate, distanceKilometers: distance)

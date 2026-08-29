@@ -22,10 +22,26 @@ final class LocationPolicyTests: XCTestCase {
         XCTAssertEqual(policy.decide(candidate: nil, previous: nil, now: now), .unavailable(.unavailable))
     }
 
-    func testMovementBelowThresholdRetainsPrevious() {
+    func testMovementBelowTwoKilometersRetainsPrevious() {
         let old = sample()
-        let nearby = sample(lat: 49.45, lon: 6.00)
+        let nearby = sample(lat: 49.410, lon: 5.982)
         XCTAssertEqual(policy.decide(candidate: nearby, previous: old, now: now), .retain(old, .insignificantMovement))
+    }
+
+    func testHyperlocalMovementAboveTwoKilometersIsAccepted() {
+        let old = sample()
+        let aumetzSide = sample(lat: 49.410, lon: 5.950)
+        guard case .accept(let accepted, let distance) = policy.decide(candidate: aumetzSide, previous: old, now: now) else {
+            return XCTFail("Expected hyperlocal move to be accepted")
+        }
+        XCTAssertEqual(accepted, aumetzSide)
+        XCTAssertGreaterThan(distance ?? 0, 2)
+    }
+
+    func testCoarseGPSDoesNotTriggerZoneChangeInsideItsUncertainty() {
+        let old = sample(accuracy: 3_000)
+        let candidate = sample(lat: 49.410, lon: 5.950, accuracy: 100)
+        XCTAssertEqual(policy.decide(candidate: candidate, previous: old, now: now), .retain(old, .insignificantMovement))
     }
 
     func testMovementAboveThresholdIsAccepted() {
@@ -35,7 +51,7 @@ final class LocationPolicyTests: XCTestCase {
             return XCTFail("Expected accepted move")
         }
         XCTAssertEqual(accepted, paris)
-        XCTAssertGreaterThan(distance ?? 0, 20)
+        XCTAssertGreaterThan(distance ?? 0, 2)
     }
 
     func testStalePositionRetainsPrevious() {

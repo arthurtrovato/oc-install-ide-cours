@@ -15,12 +15,23 @@ public struct WeatherTimelineBuilder: Sendable {
     public let dailyCount: Int
     public let futureEntryCount: Int
     public let refreshInterval: TimeInterval
+    public let refreshPhase: TimeInterval
+    public let hourlyCutoverMinutes: Int
 
-    public init(hourlyCount: Int = 6, dailyCount: Int = 5, futureEntryCount: Int = 7, refreshInterval: TimeInterval = 75 * 60) {
+    public init(
+        hourlyCount: Int = 6,
+        dailyCount: Int = 5,
+        futureEntryCount: Int = 7,
+        refreshInterval: TimeInterval = 90 * 60,
+        refreshPhase: TimeInterval = 5 * 60,
+        hourlyCutoverMinutes: Int = 5
+    ) {
         self.hourlyCount = hourlyCount
         self.dailyCount = dailyCount
         self.futureEntryCount = futureEntryCount
-        self.refreshInterval = refreshInterval
+        self.refreshInterval = max(15 * 60, refreshInterval)
+        self.refreshPhase = refreshPhase
+        self.hourlyCutoverMinutes = min(20, max(0, hourlyCutoverMinutes))
     }
 
     public func build(
@@ -35,12 +46,23 @@ public struct WeatherTimelineBuilder: Sendable {
 
         var dates = [now]
         if let nextHour = calendar.nextDate(after: now, matching: DateComponents(minute: 0, second: 0), matchingPolicy: .nextTime) {
-            for offset in 0..<(max(1, futureEntryCount) - 1) {
-                if let date = calendar.date(byAdding: .hour, value: offset, to: nextHour) { dates.append(date) }
+            for offset in 0..<max(1, futureEntryCount) {
+                guard let hourBoundary = calendar.date(byAdding: .hour, value: offset, to: nextHour) else { continue }
+                dates.append(hourBoundary)
+                if hourlyCutoverMinutes > 0,
+                   let cutover = calendar.date(byAdding: .minute, value: hourlyCutoverMinutes, to: hourBoundary) {
+                    dates.append(cutover)
+                }
             }
         }
 
-        let entries = dates.map {
+        dates.sort()
+        var uniqueDates: [Date] = []
+        for date in dates where uniqueDates.last != date {
+            uniqueDates.append(date)
+        }
+
+        let entries = uniqueDates.map {
             displayModel(
                 snapshot: snapshot,
                 at: $0,
@@ -49,7 +71,10 @@ public struct WeatherTimelineBuilder: Sendable {
                 warning: warning
             )
         }
-        let requestedRefresh = max(now.addingTimeInterval(15 * 60), snapshot.fetchedAt.addingTimeInterval(refreshInterval))
+
+        let cadence = WeatherRefreshCadence(interval: refreshInterval, phase: refreshPhase)
+        let alignedRefresh = cadence.nextBoundary(after: now)
+        let requestedRefresh = max(now.addingTimeInterval(15 * 60), alignedRefresh)
         return WeatherTimeline(entries: entries, requestedRefreshDate: requestedRefresh)
     }
 
@@ -72,8 +97,8 @@ public struct WeatherTimelineBuilder: Sendable {
         isDifferentLocationFallback: Bool,
         warning: String?
     ) -> WeatherDisplayModel {
-        let tolerance = date.addingTimeInterval(-5 * 60)
-        let hours = Array(snapshot.hourly.filter { $0.date >= tolerance }.prefix(hourlyCount))
+        let tolerance = date.addingTimeInterval(-Double(hourlyCutoverMinutes) * 60)
+        let hours = Array(snapshot.hourly.filter { $0.date > tolerance }.prefix(hourlyCount))
         let startOfDay = calendar.startOfDay(for: date)
         let days = Array(snapshot.daily.filter { calendar.startOfDay(for: $0.date) >= startOfDay }.prefix(dailyCount))
         return WeatherDisplayModel(

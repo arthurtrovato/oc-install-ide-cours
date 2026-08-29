@@ -21,7 +21,7 @@ public struct WeatherLoadResult: Equatable, Sendable {
     }
 
     public var isDifferentLocationFallback: Bool {
-        snapshot.location.coordinate.distanceKilometers(to: requestedLocation.coordinate) > 20
+        snapshot.location.coordinate.distanceKilometers(to: requestedLocation.coordinate) > WeatherCachePolicy.defaultLocationThresholdKilometers
     }
 }
 
@@ -72,9 +72,14 @@ public actor WeatherRepository {
     public func latestCachedWeather(at now: Date = Date()) async -> WeatherLoadResult? {
         let records = (try? await cache.loadRecords()) ?? []
         guard let latest = records.max(by: { $0.snapshot.fetchedAt < $1.snapshot.fetchedAt }) else { return nil }
+        let source: WeatherLoadSource
+        switch policy.match(records: [latest], location: latest.snapshot.location, now: now) {
+        case .fresh: source = .freshCache
+        case .stale, .none: source = .staleCache
+        }
         return WeatherLoadResult(
             snapshot: latest.snapshot,
-            source: latest.snapshot.freshness(at: now, freshInterval: policy.freshInterval) == .fresh ? .freshCache : .staleCache,
+            source: source,
             requestedLocation: latest.snapshot.location
         )
     }

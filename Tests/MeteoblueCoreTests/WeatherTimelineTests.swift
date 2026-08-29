@@ -10,13 +10,24 @@ final class WeatherTimelineTests: XCTestCase {
         XCTAssertEqual(model.todayPrecipitationMillimeters, 1.4)
     }
 
-    func testFutureEntriesShiftHourlyWithoutNetworkFetch() {
+    func testFutureEntriesIncludeHourlyBoundaryAndFiveMinuteCutoverWithoutNetworkFetch() {
         let now = utcDate("2026-08-25T08:10:00Z")
         let snapshot = SampleWeatherFactory.make(fetchedAt: now)
         let timeline = WeatherTimelineBuilder().build(snapshot: snapshot, from: now)
-        XCTAssertEqual(timeline.entries.count, 7)
-        XCTAssertNotEqual(timeline.entries[0].nextHours.first?.date, timeline.entries[2].nextHours.first?.date)
+        XCTAssertEqual(timeline.entries.count, 15)
+        XCTAssertEqual(timeline.entries[1].date, utcDate("2026-08-25T09:00:00Z"))
+        XCTAssertEqual(timeline.entries[2].date, utcDate("2026-08-25T09:05:00Z"))
+        XCTAssertNotEqual(timeline.entries[1].nextHours.first?.date, timeline.entries[2].nextHours.first?.date)
         XCTAssertEqual(timeline.entries[2].snapshot.fetchedAt, snapshot.fetchedAt)
+    }
+
+    func testFiveMinuteCutoverMakesIndependentlyGeneratedTimelinesAgreeOnHourlyWindow() {
+        let snapshot = SampleWeatherFactory.make(fetchedAt: utcDate("2026-08-25T08:00:00Z"))
+        let builder = WeatherTimelineBuilder()
+        let atBoundary = builder.displayModel(snapshot: snapshot, at: utcDate("2026-08-25T09:00:00Z"))
+        let afterCutover = builder.displayModel(snapshot: snapshot, at: utcDate("2026-08-25T09:05:00Z"))
+        XCTAssertEqual(atBoundary.nextHours.first?.date, utcDate("2026-08-25T09:00:00Z"))
+        XCTAssertEqual(afterCutover.nextHours.first?.date, utcDate("2026-08-25T10:00:00Z"))
     }
 
     func testMidnightChangesDailyWindow() {
@@ -39,8 +50,14 @@ final class WeatherTimelineTests: XCTestCase {
         XCTAssertNotEqual(parisCalendar.component(.day, from: parisModel.date), nyCalendar.component(.day, from: nyModel.date))
     }
 
-    func testRefreshIsNotRequestedMoreFrequentlyThanFifteenMinutes() {
+    func testRefreshRequestsSharedNinetyMinuteBoundary() {
         let now = utcDate("2026-08-25T08:00:00Z")
+        let timeline = WeatherTimelineBuilder().build(snapshot: SampleWeatherFactory.make(fetchedAt: now), from: now)
+        XCTAssertEqual(timeline.requestedRefreshDate, utcDate("2026-08-25T09:05:00Z"))
+    }
+
+    func testRefreshIsNotRequestedMoreFrequentlyThanFifteenMinutes() {
+        let now = utcDate("2026-08-25T09:00:00Z")
         let timeline = WeatherTimelineBuilder().build(snapshot: SampleWeatherFactory.make(fetchedAt: now.addingTimeInterval(-10_000)), from: now)
         XCTAssertGreaterThanOrEqual(timeline.requestedRefreshDate.timeIntervalSince(now), 15 * 60)
     }
