@@ -169,7 +169,11 @@ public struct WeatherSnapshot: Codable, Equatable, Sendable {
         return nil
     }
 
-    public func freshness(at date: Date, freshInterval: TimeInterval = 75 * 60, veryStaleInterval: TimeInterval = 6 * 60 * 60) -> WeatherFreshness {
+    public func freshness(
+        at date: Date,
+        freshInterval: TimeInterval = WeatherRefreshCadence.defaultInterval,
+        veryStaleInterval: TimeInterval = 6 * 60 * 60
+    ) -> WeatherFreshness {
         let age = max(0, date.timeIntervalSince(fetchedAt))
         if age <= freshInterval { return .fresh }
         if age <= veryStaleInterval { return .stale }

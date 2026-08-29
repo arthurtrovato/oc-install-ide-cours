@@ -1,17 +1,21 @@
 import CoreLocation
 import Foundation
 import MeteoblueCore
+import OSLog
 
 @MainActor
 final class WidgetWeatherCoordinator {
+    private let namespace: String
     private let environment: AppleEnvironment
     private let locationClient: AppleLocationClient
     private let repository: WeatherRepository
     private let locationPolicy = LocationPolicy()
     private let timelineBuilder = WeatherTimelineBuilder()
+    private let logger = Logger(subsystem: "com.arthurtrovato.MeteoblueWidget", category: "weather-load")
 
     init(namespace: String = "widget") {
         let environment = AppleEnvironment.make(namespace: namespace)
+        self.namespace = namespace
         self.environment = environment
         self.locationClient = AppleLocationClient()
         let service = MeteoblueWeatherService(apiKeyProvider: { environment.configuration.meteoblueAPIKey })
@@ -64,28 +68,37 @@ final class WidgetWeatherCoordinator {
             do {
                 let result = try await repository.weather(for: resolved, at: now, forceRefresh: false)
                 let warning = result.lastError ?? locationWarning
-                return timelineBuilder.build(
-                    snapshot: result.snapshot,
-                    from: now,
-                    isDifferentLocationFallback: result.isDifferentLocationFallback,
-                    warning: warning
-                )
+                return buildTimelineAndLog(result: result, at: now, warning: warning)
             } catch {
                 if let cached = await repository.latestCachedWeather(at: now) {
-                    return timelineBuilder.build(snapshot: cached.snapshot, from: now, warning: safeMessage(error))
+                    return buildTimelineAndLog(result: cached, at: now, warning: safeMessage(error))
                 }
+                logger.error("METEOBLUE_SNAPSHOT surface=\(self.namespace, privacy: .public) result=unavailable")
                 return nil
             }
         }
 
         if let cached = await repository.latestCachedWeather(at: now) {
-            return timelineBuilder.build(snapshot: cached.snapshot, from: now, warning: locationWarning)
+            return buildTimelineAndLog(result: cached, at: now, warning: locationWarning)
         }
+        logger.error("METEOBLUE_SNAPSHOT surface=\(self.namespace, privacy: .public) result=no-location-no-cache")
         return nil
     }
 
     var isConfigured: Bool { environment.configuration.isConfigured }
     var isWidgetLocationAuthorized: Bool { locationClient.isAuthorizedForWidgetUpdates }
+
+    private func buildTimelineAndLog(result: WeatherLoadResult, at now: Date, warning: String?) -> WeatherTimeline {
+        let timeline = timelineBuilder.build(
+            snapshot: result.snapshot,
+            from: now,
+            isDifferentLocationFallback: result.isDifferentLocationFallback,
+            warning: warning
+        )
+        let diagnostic = WeatherLoadDiagnostic(surface: namespace, result: result, timeline: timeline, observedAt: now)
+        logger.info("\(diagnostic.logLine, privacy: .public)")
+        return timeline
+    }
 
     private func warning(for reason: LocationRejectionReason) -> String? {
         switch reason {

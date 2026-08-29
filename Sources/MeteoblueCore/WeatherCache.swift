@@ -1,10 +1,16 @@
 import Foundation
 
 public struct WeatherRefreshCadence: Equatable, Sendable {
+    public static let defaultInterval: TimeInterval = 90 * 60
+    public static let defaultPhase: TimeInterval = 5 * 60
+
     public let interval: TimeInterval
     public let phase: TimeInterval
 
-    public init(interval: TimeInterval = 90 * 60, phase: TimeInterval = 5 * 60) {
+    public init(
+        interval: TimeInterval = WeatherRefreshCadence.defaultInterval,
+        phase: TimeInterval = WeatherRefreshCadence.defaultPhase
+    ) {
         self.interval = max(15 * 60, interval)
         let normalized = phase.truncatingRemainder(dividingBy: self.interval)
         self.phase = normalized >= 0 ? normalized : normalized + self.interval
@@ -100,7 +106,7 @@ public struct WeatherCachePolicy: Sendable {
     public let refreshCadence: WeatherRefreshCadence
 
     public init(
-        freshInterval: TimeInterval = 90 * 60,
+        freshInterval: TimeInterval = WeatherRefreshCadence.defaultInterval,
         locationThresholdKilometers: Double = WeatherCachePolicy.defaultLocationThresholdKilometers,
         maximumRecords: Int = 8,
         refreshCadence: WeatherRefreshCadence = WeatherRefreshCadence()
@@ -113,22 +119,34 @@ public struct WeatherCachePolicy: Sendable {
 
     public func match(records: [WeatherCacheRecord], location: WeatherLocation, now: Date) -> Match {
         guard location.coordinate.isValid else { return .none }
-        let candidates = records.compactMap { record -> (WeatherCacheRecord, Double)? in
+        let candidates = records.compactMap { record -> (record: WeatherCacheRecord, distance: Double)? in
             let distance = record.snapshot.location.coordinate.distanceKilometers(to: location.coordinate)
             guard distance <= locationThresholdKilometers else { return nil }
             return (record, distance)
         }
-        guard let nearest = candidates.min(by: { lhs, rhs in
-            if abs(lhs.1 - rhs.1) > 0.001 { return lhs.1 < rhs.1 }
-            return lhs.0.snapshot.fetchedAt > rhs.0.snapshot.fetchedAt
-        }) else { return .none }
+        guard !candidates.isEmpty else { return .none }
 
-        let age = max(0, now.timeIntervalSince(nearest.0.snapshot.fetchedAt))
-        if age <= freshInterval,
-           refreshCadence.contains(fetchedAt: nearest.0.snapshot.fetchedAt, at: now) {
-            return .fresh(nearest.0, distanceKilometers: nearest.1)
+        func closest(_ values: [(record: WeatherCacheRecord, distance: Double)]) -> (record: WeatherCacheRecord, distance: Double)? {
+            values.min { lhs, rhs in
+                if abs(lhs.distance - rhs.distance) > 0.001 { return lhs.distance < rhs.distance }
+                return lhs.record.snapshot.fetchedAt > rhs.record.snapshot.fetchedAt
+            }
         }
-        return .stale(nearest.0, distanceKilometers: nearest.1)
+
+        // Prefer any snapshot that is still valid for the shared refresh window before
+        // falling back to a geographically closer but stale record. Every candidate is
+        // already inside the 2 km hyperlocal tolerance, so this avoids an unnecessary
+        // network call without accepting a meaningfully different weather zone.
+        let freshCandidates = candidates.filter { candidate in
+            let age = max(0, now.timeIntervalSince(candidate.record.snapshot.fetchedAt))
+            return age <= freshInterval && refreshCadence.contains(fetchedAt: candidate.record.snapshot.fetchedAt, at: now)
+        }
+        if let fresh = closest(freshCandidates) {
+            return .fresh(fresh.record, distanceKilometers: fresh.distance)
+        }
+
+        guard let nearest = closest(candidates) else { return .none }
+        return .stale(nearest.record, distanceKilometers: nearest.distance)
     }
 
     public func inserting(_ record: WeatherCacheRecord, into records: [WeatherCacheRecord]) -> [WeatherCacheRecord] {
